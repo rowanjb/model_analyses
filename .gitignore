@@ -30,6 +30,7 @@ core
 *.pdf
 *.nc 
 *.mp4
+*figs*
 
 /doc/_build/
 
