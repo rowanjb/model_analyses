@@ -161,8 +161,19 @@ def plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None):
 if __name__ == "__main__":
     
     #For consistency across multiple runs
-    zeta_minmax = (-0.0075,0.0125)
-    N2_minmax = (-0.0000069,0.00000585)
+    zeta_minmax = (-0.002,0.18)#(-0.0075,0.0125)
+    N2_minmax = (-0.000005,0.00000225)#(-0.0000069,0.00000585)
+
+    run = 'mrb_001'
+    data_dir = '/dss/dsshome1/0B/ra85duq/MITgcm/so_plumes/'+run
+    figs_dir = '/dss/dsshome1/0B/ra85duq/model_analyses/figs_'+run
+    zeta, N2 = zeta_and_N2(data_dir)
+    zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
+    print(zeta_minmax)
+    print(N2_minmax)
+    plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+
+    quit()
 
     run = 'run_parallel'
     data_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/'+run
