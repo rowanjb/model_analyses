@@ -159,11 +159,19 @@ def plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None):
     plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax, N2_minmax, cb=True) #figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False
 
 if __name__ == "__main__":
-    
-    #For consistency across multiple runs
-    zeta_minmax = (-0.002,0.18)#(-0.0075,0.0125)
-    N2_minmax = (-0.000005,0.00000225)#(-0.0000069,0.00000585)
 
+    # Refers to the standard "run" directory 
+    run = 'run'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
+    zeta, N2 = zeta_and_N2(data_dir)
+    zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
+    print(zeta_minmax)
+    print(N2_minmax)
+    plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    quit()
+
+    # Refers to my first "production" run
     run = 'mrb_001'
     data_dir = '/dss/dsshome1/0B/ra85duq/MITgcm/so_plumes/'+run
     figs_dir = '/dss/dsshome1/0B/ra85duq/model_analyses/figs_'+run
@@ -173,32 +181,38 @@ if __name__ == "__main__":
     print(N2_minmax)
     plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
-    quit()
+
+    # For creating multiple moves of comparable runs 
+
+    #For consistency across multiple runs
+    zeta_minmax = (-0.002,0.18)#(-0.0075,0.0125)
+    N2_minmax = (-0.000005,0.00000225)#(-0.0000069,0.00000585)
 
     run = 'run_parallel'
-    data_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/'+run
-    figs_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_'+run
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
     zeta, N2 = zeta_and_N2(data_dir)
     #zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
     plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
     run = 'run_40m'
-    data_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/'+run
-    figs_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_'+run
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
     zeta, N2 = zeta_and_N2(data_dir)
     #zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
     plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
     run = 'run_80m'
-    data_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/'+run
-    figs_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_'+run
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
     zeta, N2 = zeta_and_N2(data_dir)
     #zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
     plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
     run = 'run_160m'
-    data_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/'+run
-    figs_dir = '/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_'+run
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
     zeta, N2 = zeta_and_N2(data_dir)
     #zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
     plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    
