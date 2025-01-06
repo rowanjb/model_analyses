@@ -12,9 +12,9 @@ def basic_example():
     lon = np.arange(0,100,1)
     lat = np.arange(0,100,1)
     depth = np.arange(0,50,1)
-    shape,_,_ = np.meshgrid(lon,lat,depth)
+    shape,_,_ = np.meshgrid(depth,lon,lat)
     pseudo = shape*0+1
-    xmitgcm.utils.write_to_binary(pseudo.flatten(), 'T.1c.bin')
+    xmitgcm.utils.write_to_binary(pseudo.flatten(), 'T.1c_new.bin', dtype=np.dtype('>f4') )
 
 def temp_profile_plot():
     ds = xr.open_dataset('20040212_prof.nc').isel(N_PROF=26)
@@ -80,4 +80,4 @@ def argo_temp_profile():
 #print(ds.PRES_QC.values)
 
 if __name__ == "__main__":
-    argo_temp_profile()
+    basic_example()
