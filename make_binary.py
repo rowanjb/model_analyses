@@ -27,6 +27,8 @@ def temp_from_woa():
         else: y[i] = np.sum(dy[:i]) + n/2
     T = dst['t_an'].isel(time=0).sel({'lat': -69, 'lon': -27},method='nearest').interp(depth=y)
     S = dss['s_an'].isel(time=0).sel({'lat': -69, 'lon': -27},method='nearest').interp(depth=y)
+    print(S)
+    quit()
     pseudo = np.tile(T,(100,100,1))
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), 'T.WOA.bin')
     pseudo = np.tile(S,(100,100,1))

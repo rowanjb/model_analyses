@@ -7,6 +7,20 @@ from MITgcmutils import density
 import xgcm
 import os
 
+def simple_plot(data_dir):
+    """For checking out simulation output."""
+    ds = open_mdsdataset(data_dir,geometry='cartesian',prefix=['S','T','U','V'])
+    print(ds.T.mean().to_numpy())
+    print(ds.S.mean().to_numpy())
+    quit()
+    X = np.linspace(0, 99, 100)
+    Y = np.linspace(0, 99, 100)
+    fig, ax = plt.subplots()
+    cs = ax.contourf(X, Y, ds['S'].isel(time=1, Z=0).to_numpy())
+    cbar = fig.colorbar(cs)
+    plt.savefig('Test.png')
+    quit()
+
 def zeta_and_N2(data_dir):
     """Returns a dataarray of vorticity and a dataarray of buoyancy."""
     # Regarding interpolating; don't forget to manually test this! (Both the interpolating and the vorticity.)
@@ -163,12 +177,7 @@ if __name__ == "__main__":
     # Refers to the standard "run" directory 
     run = 'run'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    figs_dir = '/albedo/home/robrow001/MITgcm/so_plumes/figs_'+run
-    zeta, N2 = zeta_and_N2(data_dir)
-    zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
-    print(zeta_minmax)
-    print(N2_minmax)
-    plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    simple_plot(data_dir)
     quit()
 
     # Refers to my first "production" run
