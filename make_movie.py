@@ -10,7 +10,7 @@ def numericalSort(value):
     return parts
 
 def generate_video(fig_dir,run):
-    figs = sorted(os.listdir(fig_dir))#,key=numericalSort)
+    figs = sorted(os.listdir(fig_dir))[:-24]#,key=numericalSort)
     frame = cv2.imread(fig_dir + figs[0])
     height, width, layers = frame.shape
     fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
@@ -25,7 +25,7 @@ def generate_video(fig_dir,run):
     video.release()
 
 if __name__ == "__main__":
-    generate_video('./figs_mrb_001/','mrb_001')
+    generate_video('./figs_run/','run')
     quit()
     generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_parallel/','parallel')
     generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_40m/','40m')

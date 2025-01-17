@@ -47,7 +47,7 @@ def get_mins_and_maxs(zeta,N2):
     N2_minmax = N2_min, N2_max
     return zeta_minmax, N2_minmax
 
-def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False):
+def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False, dt=10):
     """Plotting mechanism for creating ONE plot. 
     i_time is the index of the time you want to plot.
     minmax parameters are tuples.
@@ -56,8 +56,8 @@ def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=No
 
     X, Y, Z = np.meshgrid(N2.XC.to_numpy(), N2.YC.to_numpy(), N2.Z.to_numpy())
 
-    time_dseconds_str = str(zeta.isel(time=i_time)['time'].dt.seconds.to_numpy()) #mightn't work > 1 day!!!!!!!
-    time_hours_str = str(float(time_dseconds_str)/60/6)
+    timestep_str = str(zeta.isel(time=i_time)['time'].dt.seconds.to_numpy()) #mightn't work > 1 day!!!!!!!
+    time_hours_str = str(float(timestep_str)*dt/60/60) # Have to do this manually 
 
     zeta_np = zeta.isel(time=i_time).to_numpy()
     N2_np = N2.isel(time=i_time).to_numpy()
@@ -138,7 +138,7 @@ def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=No
         os.makedirs(figs_dir)
     
     # Save figure
-    time_dseconds_str = time_dseconds_str.zfill(10)
+    timestep_str = timestep_str.zfill(10)
     if cb == True: # Colorbar (can specify to use global mins and maxes for the whole run by providing minmaxes to this function)
         bbox_ax = ax.get_position()
         cbar_zeta_ax = fig.add_axes([1.09,bbox_ax.y0, 0.025, bbox_ax.y1-bbox_ax.y0]) #([bbox_ax.x0, 0.09, bbox_ax.x1-bbox_ax.x0, 0.02]) # for horiz bars
@@ -152,13 +152,15 @@ def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=No
         cbar_N2.formatter.set_useMathText(True)
 
         ax.remove()
-        plt.savefig(figs_dir+'/plume_cbar_'+time_dseconds_str+'.png',dpi=900,bbox_inches="tight")
+        plt.savefig(figs_dir+'/plume_cbar_'+timestep_str+'.png',dpi=450,bbox_inches="tight")
+        print(figs_dir+'/plume_cbar_'+timestep_str+'.png')
         plt.close()
     else:    
-        plt.savefig(figs_dir+'/plume_'+time_dseconds_str+'.png',dpi=900, bbox_inches="tight")    
+        plt.savefig(figs_dir+'/plume_'+timestep_str+'.png',dpi=450, bbox_inches="tight")    
+        print(figs_dir+'/plume_'+timestep_str+'.png')
         plt.close()    
 
-def plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None):
+def plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None, dt=10):
     """Plot vorticity on the sea surface and buoyancy on the vertical face.
     Based on Vreugdenhil and Gayen 2021.
     Accepts datarrays of vorticity and buoyancy, as well as tuples of the min and max values to plot."""
@@ -166,18 +168,27 @@ def plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None):
     # For making a movie
     i_times = len(zeta.time.to_numpy())
     for i_time in range(i_times):
-        plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax, N2_minmax, cb=False) #figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False
+        plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax, N2_minmax, cb=False, dt=dt) #figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False
 
     # Produces a colourbar
     i_time=10
-    plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax, N2_minmax, cb=True) #figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False
+    plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax, N2_minmax, cb=True, dt=dt) #figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=None, cb=False
 
 if __name__ == "__main__":
 
     # Refers to the standard "run" directory 
     run = 'run'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    simple_plot(data_dir)
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, N2 = zeta_and_N2(data_dir)
+    #zeta_minmax, N2_minmax = get_mins_and_maxs(zeta, N2)
+    #print(zeta_minmax)
+    #print(N2_minmax)
+    #quit()
+    #For consistency across multiple runs
+    zeta_minmax = (-0.02,0.02)#(-0.0075,0.0125)
+    N2_minmax = (-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, N2, zeta_minmax, N2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
     quit()
 
     # Refers to my first "production" run

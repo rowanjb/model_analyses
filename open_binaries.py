@@ -68,5 +68,26 @@ def read_binaries():
     #cbar = fig.colorbar(cs)
     #plt.savefig('V.120mn.png')
 
+    #Boundary Ts from the reentrant channel tutorial
+    T = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T_relax_mask.50km.bin', shape=(49,40,20), dtype=np.dtype('>f4') )
+    Y = np.linspace(0, 39, 40)
+    Z = np.linspace(0, 48, 49)
+    fig, ax = plt.subplots()
+    cs = ax.pcolormesh(Y, Z, T[:,:,10])
+    cbar = fig.colorbar(cs)
+    plt.savefig('T_relax_mask.50km.png')
+
+    #Boundary Ts from the reentrant channel tutorial
+    #T = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/temperature.50km.bin', shape=(49,40,20), dtype=np.dtype('>f4') )
+    #Y = np.linspace(0, 39, 40)
+    #Z = np.linspace(0, 48, 49)
+    #fig, ax = plt.subplots()
+    #cs = ax.pcolormesh(Y, Z, T[:,:,19])
+    #cbar = fig.colorbar(cs)
+    #plt.savefig('temperature.50km.png')
+
+    #T_relax_mask.50km.bin ../binaries/
+    #(.venv) robrow001@albedo0:~/MITgcm/so_plumes/input$ mv temperature.50km.bin ../binaries/
+
 if __name__ == "__main__":
     read_binaries()
