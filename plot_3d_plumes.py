@@ -10,16 +10,18 @@ import os
 def simple_plot(data_dir):
     """For checking out simulation output."""
     ds = open_mdsdataset(data_dir,geometry='cartesian',prefix=['S','T','U','V'])
-    print(ds.T.mean().to_numpy())
-    print(ds.S.mean().to_numpy())
-    quit()
-    X = np.linspace(0, 99, 100)
-    Y = np.linspace(0, 99, 100)
-    fig, ax = plt.subplots()
-    cs = ax.contourf(X, Y, ds['S'].isel(time=1, Z=0).to_numpy())
-    cbar = fig.colorbar(cs)
-    plt.savefig('Test.png')
-    quit()
+    print(ds['T'].isel(time=-1).mean().values)
+    #X = np.linspace(0, 99, 100)
+    #Y = np.linspace(0, 99, 100)
+    #fig, ax = plt.subplots()
+    #cs = ax.contourf(X, Y, ds['S'].isel(time=1, Z=0).to_numpy())
+    #cbar = fig.colorbar(cs)
+    #plt.savefig('Test.png')
+    #quit()
+
+simple_plot('../MITgcm/so_plumes/mrb_002')
+simple_plot('../MITgcm/so_plumes/mrb_003')
+quit()
 
 def zeta_and_N2(data_dir):
     """Returns a dataarray of vorticity and a dataarray of buoyancy."""
