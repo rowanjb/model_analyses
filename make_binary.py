@@ -113,16 +113,17 @@ def relax_mask():
     M[:,98,:] = 0.25
     M[:,:,1] = 0.25
     M[:,:,98] = 0.25
+    M[48,:,:] = 0.25
     M[:,0,:] = 1 # outer cells are 1---note they need to be spec'd after the 0.25 cells to avoid make some outter cells 0.25 accidentally
     M[:,99,:] = 1
     M[:,:,0] = 1
     M[:,:,99] = 1
-    #M[0,:,:] = 1
+    M[49,:,:] = 1
     # either np.moveaxis(M, [0, 1, 2], [-1, -2, -3]).flatten(order='F') or M.flatten(order='C')
-    xmitgcm.utils.write_to_binary(np.moveaxis(M, [0, 1, 2], [-1, -2, -3]).flatten(order='F'), '../MITgcm/so_plumes/binaries/relax_mask.bin')
+    xmitgcm.utils.write_to_binary(np.moveaxis(M, [0, 1, 2], [-1, -2, -3]).flatten(order='F'), '../MITgcm/so_plumes/binaries/relax_mask_incl_bottom.bin')
 
     #testing
-    M = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/relax_mask.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
+    M = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/relax_mask_incl_bottom.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
     X = np.linspace(0, 99, 100)
     Y = np.linspace(0, 49, 50)
     fig, ax = plt.subplots()
