@@ -31,6 +31,7 @@ core
 *.nc 
 *.mp4
 *figs*
+RUN_Python_albedo.sh
 
 /doc/_build/
 

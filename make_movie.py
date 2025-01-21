@@ -25,9 +25,11 @@ def generate_video(fig_dir,run):
     video.release()
 
 if __name__ == "__main__":
-    generate_video('./figs_mrb_004/','mrb_004')
-    quit()
-    generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_parallel/','parallel')
-    generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_40m/','40m')
-    generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_80m/','80m')
-    generate_video('/albedo/home/robrow001/MITgcm/verification/tutorial_deep_convection_cp/figs_run_160m/','160m')
+    #generate_video('./figs_mrb_002/','mrb_002')
+    #generate_video('./figs_mrb_003/','mrb_003')
+    #generate_video('./figs_mrb_004/','mrb_004')
+    #generate_video('./figs_mrb_005/','mrb_005')
+    #generate_video('./figs_mrb_006/','mrb_006')
+    #generate_video('./figs_mrb_007/','mrb_007')
+    generate_video('./figs_mrb_008/','mrb_008')
+    
