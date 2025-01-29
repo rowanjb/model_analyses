@@ -78,7 +78,7 @@ def plume_plot_engine(figs_dir, zeta, N2, i_time, zeta_minmax=None, N2_minmax=No
         'norm': SymLogNorm(linscale=linscale, linthresh=linthresh, vmin=zeta_min, vmax=zeta_max),
     }
 
-    linscale, linthresh = 0.001, 0.00002
+    linscale, linthresh = 0.0001, 0.000002
     positive_levels = np.logspace(np.log10(linthresh), np.log10(N2_max), 51)
     negative_levels = -np.logspace(np.log10(linthresh), np.log10(-N2_min), 51)
     levels = np.concatenate([negative_levels[::-1], [0], positive_levels])
@@ -190,62 +190,61 @@ def avg_temp(data_dir):
 
 if __name__ == "__main__":
 
-    #avg_temp('../MITgcm/so_plumes/mrb_002')
-    #avg_temp('../MITgcm/so_plumes/mrb_003')
-    #avg_temp('../MITgcm/so_plumes/mrb_004')
-    #avg_temp('../MITgcm/so_plumes/mrb_005')
-    #avg_temp('../MITgcm/so_plumes/mrb_006')
-    #avg_temp('../MITgcm/so_plumes/mrb_007')
+    #avg_temp('../MITgcm/so_plumes/mrb_002') # 0.2599955576563594 production run
+    #avg_temp('../MITgcm/so_plumes/mrb_003') # 0.2601810829108668 side tau =86400
+    #avg_temp('../MITgcm/so_plumes/mrb_004') # 0.2599837272808078 side tau =8640
+    #avg_temp('../MITgcm/so_plumes/mrb_005') # 0.2614877021773202 side tau =864 *crashes
+    #avg_temp('../MITgcm/so_plumes/mrb_006') # 0.2600030499680336 side tau =864000
+    #avg_temp('../MITgcm/so_plumes/mrb_007') # 0.26368029388014746 full tau =86400
+    #avg_temp('../MITgcm/so_plumes/mrb_008') # 0.2772914436059543 full tau =8640
+    #avg_temp('../MITgcm/so_plumes/mrb_011') # 0.26413005811064794
     #quit()
 
-    #run = 'mrb_002'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    run = 'mrb_002'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    run = 'mrb_003'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
-    #run = 'mrb_003'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
-    
-    #run = 'mrb_004'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None 
-    
-    #run = 'mrb_005'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    run = 'mrb_004'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None 
 
-    #run = 'mrb_006'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
-    
-    #run = 'mrb_007'
-    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    #figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
-    #zeta, out2 = zeta_and_out2(data_dir)
-    #zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    #out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
-    #plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    run = 'mrb_005'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
+    run = 'mrb_006'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
 
+    run = 'mrb_007'
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
+    zeta, out2 = zeta_and_out2(data_dir)
+    zeta_minmax = (-0.04,0.04)#(-0.0075,0.0125)
+    out2_minmax = (-0.0002,0.0002)#(3,5)#(3.045,4.8)#(-0.00015,0.00015)#(-0.0000069,0.00000585)
+    plot_plumes(figs_dir, zeta, out2, zeta_minmax, out2_minmax, dt=3) #figs_dir, zeta, N2, zeta_minmax, N2_minmax, i_time=None
     run = 'mrb_008'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
     figs_dir = '/albedo/home/robrow001/model_analyses/figs_'+run
