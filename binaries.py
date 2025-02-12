@@ -1,5 +1,5 @@
 # Based partly on: https://xmitgcm.readthedocs.io/en/stable/demo_writing_binary_file.html 
-# These are some basic functions that I use to make and investigate binaries
+# These are some basic functions that I use to make and investigate MITgcm binaries
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,12 @@ import woa_analyses
 def from_woa():
     """Script for making binaries out of WOA climatologies."""
 
+    # Parameters
+    season = 'summer'
+    season_dict = {'winter':0,'spring':1,'summer':2,'autumn':3}
+    num_levels, numAx1, numAx2 = 50, 150, 150
+    size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
+
     # Depths used in the model
     dy = np.array([
             0.4, 1.2, 2.0, 2.8, 3.6, 4.4, 5.2, 6.0, 6.8, 7.6,
@@ -31,28 +37,25 @@ def from_woa():
         if i==0: y[i] = n/2
         else: y[i] = np.sum(dy[:i]) + n/2
 
-    season = 'autumn'
-    season_dict = {'winter':0,'spring':1,'summer':2,'autumn':3}
-
     # open the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (NORTHERN HEMISPHERE!)
     with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
     dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
     das = xr.open_dataset(dirpath + '/WOA_seasonally_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
     t = dat.isel(time=season_dict[season]).interp(depth=y)
     s = das.isel(time=season_dict[season]).interp(depth=y)
-    
+
     #comment/uncomment for theta/pt instead of t (you should want theta/pt---this is what the model demands)
     p = gsw.p_from_z((-1)*y,lat=-69.0005)
     SA = gsw.SA_from_SP(s,p,lat=-69.0005,lon=-27.0048)
     pt = gsw.pt0_from_t(SA,t,p)
 
-    pseudo = np.tile(pt,(100,100,1))
-    #pseudo[:,:,:20] = 10
-    ##pseudo[:,:,20:] = 9.99
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/theta.WOA2015.100x100.'+season+'.bin')
-    pseudo = np.tile(s,(150,150,1))
-    #pseudo[:,:,:] = 30
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/S.WOA2015.100x100.'+season+'.bin')
+    #pseudo = np.tile(pt,(100,100,1))
+        #pseudo[:,:,:20] = 10 #for a 2layer run
+        ##pseudo[:,:,20:] = 9.99 #for a 2layer run
+    #xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/theta.WOA2015.100x100.'+season+'.bin')
+    pseudo = np.tile(SA,(numAx2,numAx1,1))
+        #pseudo[:,:,:] = 30 #for a 2layer run
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/SA.WOA2015.'+size+'.'+season+'.bin')
     
 def new_Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -119,7 +122,7 @@ def read_binaries_50x100x100(binary):
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
 if __name__ == "__main__":
-    from_woa()
+    #from_woa()
     #from_mooring()
     #new_Q_surf()
     #new_Eta()
@@ -127,5 +130,5 @@ if __name__ == "__main__":
     #new_V()
     #read_binaries_150x150('Qnet_75W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_0W.100x100.bin')
-    #read_binaries_50x100x100('S.30psu.50x100x100.bin')
-    #read_binaries_50x150x150('T.WOA2015.150x150.autumn.bin')
+    read_binaries_50x100x100('T.WOA2015.50x100x100.autumn.bin')
+    #read_binaries_50x150x150('SA.WOA2015.50x150x150.autumn.bin')
