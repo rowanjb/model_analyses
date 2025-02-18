@@ -99,7 +99,5 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None):
         plot_vertical_plane(da.isel(time=i_time), var, figs_dir, vmin=vmin, vmax=vmax)
 
 if __name__ == "__main__":
-    run_plot_vertical_plane(run='mrb_019', var='T', vmin=-2, vmax=2)
-    run_plot_vertical_plane(run='mrb_019', var='S')
-    run_plot_vertical_plane(run='mrb_011', var='S')
-    run_plot_vertical_plane(run='mrb_017', var='S')
+    run_plot_vertical_plane(run='mrb_023', var='T', vmin=-2, vmax=2)
+    run_plot_vertical_plane(run='mrb_023', var='S')#, vmin=34.4, vmax=34.9)

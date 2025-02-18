@@ -129,6 +129,6 @@ if __name__ == "__main__":
     #new_U()
     #new_V()
     #read_binaries_150x150('Qnet_75W.40mCirc.150x150.bin')
-    #read_binaries_100x100('Qnet_0W.100x100.bin')
-    read_binaries_50x100x100('T.WOA2015.50x100x100.autumn.bin')
+    read_binaries_100x100('Qnet_75W.40mCirc.100x100.bin')
+    #read_binaries_50x100x100('T.WOA2015.50x100x100.autumn.bin')
     #read_binaries_50x150x150('SA.WOA2015.50x150x150.autumn.bin')

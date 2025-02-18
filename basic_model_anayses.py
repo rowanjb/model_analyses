@@ -24,7 +24,7 @@ def avg_temp(data_dir):
     weights = ds['vols']
     weights.name = "weights"
     T_weighted = ds['T'].weighted(weights)
-    T_weighted_mean = T_weighted.mean()
+    T_weighted_mean = T_weighted.mean(dim=["XC", "YC", "Z"])
     print(T_weighted_mean.values)
     #avg_temp('../MITgcm/so_plumes/mrb_002') # 0.2599955576563594 production run
     #avg_temp('../MITgcm/so_plumes/mrb_003') # 0.2601810829108668 side tau =86400
@@ -41,7 +41,9 @@ def open_mitgcm_output_all_vars(data_dir):
     ds = xr.merge([ # The pressures sometimes are missing the first timestep
         open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','U','V','Eta']),
         open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
-        open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL'])])    
+        open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
+        #open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PNH']),
+        ])    
     return ds
 
 def cell_diffs(ds):
@@ -88,8 +90,10 @@ def circulation
 
 if __name__ == "__main__":
     
-    run = 'mrb_011'
+    run = 'mrb_018'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    print(open_mitgcm_output_all_vars(data_dir))
+    quit()
     ds = open_mitgcm_output_all_vars(data_dir).isel(time=0)
     fig, ax = plt.subplots()
     T = ds['T'].isel(XC=50,YC=50).values

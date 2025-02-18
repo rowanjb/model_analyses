@@ -27,16 +27,5 @@ def generate_video(run, var):
     print(run + '_' + var + ' video saved')
 
 if __name__ == "__main__":
-    generate_video('mrb_011', 'S')
-    generate_video('mrb_011', 'T')
-    generate_video('mrb_013', 'T')
-    generate_video('mrb_014', 'T')
-    generate_video('mrb_015', 'T')    
-    generate_video('mrb_016', 'T')
-    generate_video('mrb_017', 'T')
-    generate_video('mrb_017', 'S')
-    generate_video('mrb_018', 'T')
-    generate_video('mrb_019', 'T')
-    generate_video('mrb_019', 'S')
-    generate_video('mrb_020', 'T')
-    generate_video('mrb_020', 'S')
+    generate_video('mrb_023', 'T')
+    generate_video('mrb_023', 'S')
