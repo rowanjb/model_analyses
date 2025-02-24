@@ -57,25 +57,48 @@ def from_woa():
         #pseudo[:,:,:] = 30 #for a 2layer run
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/SA.WOA2015.'+size+'.'+season+'.bin')
     
-def new_Q_surf():
+def Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
-    newQ = np.zeros((150,150))
+    newQ = np.zeros(np.shape(Q)) # Changing this but not testing: np.zeros((150,150))
     newQ[25:125,25:125] = Q/12
     xmitgcm.utils.write_to_binary(newQ.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_WOA2.150x150.bin')
 
-def new_Eta():
+def Q_surf_3D():
+    Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
+    Q1 = np.zeros(np.shape(Q2)) # Starting conditions (hend "1")
+    Q = np.stack([Q1, Q2, Q1])
+    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100x3.bin')
+
+def salt_flux():
+    S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
+    S[S != 0] = 0.00001 # Try to find a reasonable value for this 
+    xmitgcm.utils.write_to_binary(S.flatten(order='F'), '../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100.bin')
+
+def salt_flux_3D():
+    S2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
+    S1 = np.zeros(np.shape(S2)) # Starting conditions (hend "1")
+    S = np.stack([S1, S2, S1],axis=2)
+    xmitgcm.utils.write_to_binary(S.flatten(order='F'), '../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100x3.bin')
+
+def Eta():
     #Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Eta.120mn.bin', shape=(100,100), dtype=np.dtype('>f4') )
     Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_WOA2.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') )
     Eta[Eta != np.isnan] = 0
     xmitgcm.utils.write_to_binary(Eta.flatten(order='F'), '../MITgcm/so_plumes/binaries/Eta.flat.150x150.bin')
 
-def new_U():
+def constant_S_or_T():
+    S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/U.120mn.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
+    #S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA.150x150.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
+    S[S != np.isnan] = 34.8
+    xmitgcm.utils.write_to_binary(S.flatten(order='F'), '../MITgcm/so_plumes/binaries/S.const34.8.50x100x100.bin') #might need to be "C" if not all 0s
+
+def U():
     #U = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/U.120mn.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
     U = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA.150x150.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
     U[U != np.isnan] = 0 
     xmitgcm.utils.write_to_binary(U.flatten(order='F'), '../MITgcm/so_plumes/binaries/U.motionless.150x150.bin') #might need to be "C" if not all 0s
 
-def new_V():
+def V():
     #V = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/V.120mn.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
     V = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA.150x150.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
     V[V != np.isnan] = 0
@@ -121,6 +144,19 @@ def read_binaries_50x100x100(binary):
     cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
+def read_binaries_100x100xt(binary):
+    """Reads binaries with a time dimension."""
+    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(100,100,3), dtype=np.dtype('>f4') )
+    X = np.linspace(0, 99, 100)
+    Y = np.linspace(0, 99, 100)
+    _,_,z = np.shape(P)
+    fig, axs = plt.subplots(nrows=z,ncols=1,squeeze=True)
+    for i in range(z):
+        print(i)
+        cs = axs[i].pcolormesh(X, Y, P[:,:,i])
+        cbar = fig.colorbar(cs)
+    plt.savefig('binary_plots/'+binary[:-4]+'.png')
+
 if __name__ == "__main__":
     #from_woa()
     #from_mooring()
@@ -128,7 +164,10 @@ if __name__ == "__main__":
     #new_Eta()
     #new_U()
     #new_V()
+    #constant_S_or_T()
+    Q_surf_3D()
     #read_binaries_150x150('Qnet_75W.40mCirc.150x150.bin')
-    read_binaries_100x100('Qnet_75W.40mCirc.100x100.bin')
-    #read_binaries_50x100x100('T.WOA2015.50x100x100.autumn.bin')
+    #read_binaries_100x100('Qnet_75W.40mCirc.100x100.bin')
+    #read_binaries_50x100x100('S.const34.8.50x100x100.bin')
     #read_binaries_50x150x150('SA.WOA2015.50x150x150.autumn.bin')
+    read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x3.bin')
