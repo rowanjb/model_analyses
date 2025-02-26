@@ -20,10 +20,14 @@ def from_woa():
     """Script for making binaries out of WOA climatologies."""
 
     # Parameters
-    season = 'summer'
+    season = 'autumn'
     season_dict = {'winter':0,'spring':1,'summer':2,'autumn':3}
-    num_levels, numAx1, numAx2 = 50, 150, 150
+    num_levels, numAx1, numAx2 = 50, 100, 100
     size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
+    pot_temp = True # Whether you want pot or in-situ temp
+    abs_salt = True # Whether you want abs or practical salt
+    salt_dev = True # Whether you want the salinity deviation from the mean to be reduced (reduces stratifiation)
+    salt_dev_perc = '90' # Percentage of salt deviation from mean (0=full deviation, 100=no deviation)
 
     # Depths used in the model
     dy = np.array([
@@ -33,29 +37,47 @@ def from_woa():
             24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,
             32.4,33.2,34.0,34.8,35.6,36.4,37.2,38.0,38.8,39.6])
     y = np.zeros(len(dy))
-    for i,n in enumerate(dy):
+    for i,n in enumerate(dy): # Getting sell depths
         if i==0: y[i] = n/2
         else: y[i] = np.sum(dy[:i]) + n/2
 
-    # open the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (NORTHERN HEMISPHERE!)
+    # Opening the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
     with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
-    dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
     das = xr.open_dataset(dirpath + '/WOA_seasonally_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
-    t = dat.isel(time=season_dict[season]).interp(depth=y)
     s = das.isel(time=season_dict[season]).interp(depth=y)
+    dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
+    t = dat.isel(time=season_dict[season]).interp(depth=y)
 
-    #comment/uncomment for theta/pt instead of t (you should want theta/pt---this is what the model demands)
+    # Calculating pressure from depth, absolute salinity, and potential temperature 
+    # (you should want theta/pt---this is what the model demands!)
     p = gsw.p_from_z((-1)*y,lat=-69.0005)
     SA = gsw.SA_from_SP(s,p,lat=-69.0005,lon=-27.0048)
     pt = gsw.pt0_from_t(SA,t,p)
 
-    #pseudo = np.tile(pt,(100,100,1))
-        #pseudo[:,:,:20] = 10 #for a 2layer run
-        ##pseudo[:,:,20:] = 9.99 #for a 2layer run
-    #xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/theta.WOA2015.100x100.'+season+'.bin')
-    pseudo = np.tile(SA,(numAx2,numAx1,1))
-        #pseudo[:,:,:] = 30 #for a 2layer run
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/SA.WOA2015.'+size+'.'+season+'.bin')
+    # Determining which salt and temp to use
+    if pot_temp: # If potential temp, then...
+        t = pt # Let t now be potential temperature
+        t_name = 'theta' # Let the var name in the file be theta
+    else: # etc
+        t_name = 'T'
+    if abs_salt: 
+        s = SA
+        s_name = 'SA'
+    else:
+        s_name = 'S'
+
+    # Reducing the salinity's deviation
+    if salt_dev:
+        weighted_mean_s = np.average(s,weights=dy) # Mean of the salinity profile
+        delta_s = s - weighted_mean_s # Calculate the deviations
+        s = s - delta_s*(1-float('0.'+salt_dev_perc)) # Remove some fraction of the deviation
+        s_name = s_name + 'x0' + salt_dev_perc
+
+    # Name dicts 
+    pseudo = np.tile(t,(100,100,1))
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.WOA2015.'+size+'.'+season+'.bin')
+    pseudo = np.tile(s,(numAx2,numAx1,1))
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.WOA2015.'+size+'.'+season+'.bin')
     
 def Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -66,8 +88,12 @@ def Q_surf():
 def Q_surf_3D():
     Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
     Q1 = np.zeros(np.shape(Q2)) # Starting conditions (hend "1")
-    Q = np.stack([Q1, Q2, Q1])
-    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100x3.bin')
+    Q = np.stack([Q1, Q2, Q1, Q1, Q1, 
+                  Q1, Q1, Q1, Q1, Q1, 
+                  Q1, Q1, Q1, Q1, Q1, 
+                  Q1, Q1, Q1, Q1, Q1, 
+                  Q1, Q1, Q1, Q1])
+    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100x24.bin' )
 
 def salt_flux():
     S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -107,6 +133,8 @@ def V():
 def read_binaries_150x150(binary):
     """Reads binaries."""
     P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(150,150), dtype=np.dtype('>f4') )
+    print(np.shape(P))
+    quit()
     X = np.linspace(0, 149, 150)
     Y = np.linspace(0, 149, 150)
     fig, ax = plt.subplots()
@@ -146,28 +174,27 @@ def read_binaries_50x100x100(binary):
 
 def read_binaries_100x100xt(binary):
     """Reads binaries with a time dimension."""
-    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(100,100,3), dtype=np.dtype('>f4') )
-    X = np.linspace(0, 99, 100)
-    Y = np.linspace(0, 99, 100)
+    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(100,100,24), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
+    X = np.linspace(0, 99, 100)#(0, 41, 42)
+    Y = np.linspace(0, 99, 100)#(0, 19, 20)
     _,_,z = np.shape(P)
-    fig, axs = plt.subplots(nrows=z,ncols=1,squeeze=True)
+    fig, axs = plt.subplots(nrows=z,ncols=1,squeeze=True,figsize=(1,12))
     for i in range(z):
-        print(i)
-        cs = axs[i].pcolormesh(X, Y, P[:,:,i])
+        cs = axs[i].pcolormesh(Y, X, P[:,:,i])
         cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
 if __name__ == "__main__":
-    #from_woa()
+    from_woa()
     #from_mooring()
     #new_Q_surf()
     #new_Eta()
     #new_U()
     #new_V()
     #constant_S_or_T()
-    Q_surf_3D()
+    #Q_surf_3D()
     #read_binaries_150x150('Qnet_75W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_75W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('S.const34.8.50x100x100.bin')
     #read_binaries_50x150x150('SA.WOA2015.50x150x150.autumn.bin')
-    read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x3.bin')
+    #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin')
