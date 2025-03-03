@@ -11,17 +11,35 @@ import gsw
 import xgcm
 import os
 
-def open_mitgcm_output_all_vars(data_dir,iter='all'):
-    """Returns a dataset associated with the specified directory (which contains the model output) that has all variables, 
-    included ['S','T','U','V','Eta'] and ['PH','PHL']. Note that the pressures have -1 time indices compared to the other vars."""
-    ds = xr.merge([ # The pressures sometimes are missing the first timestep
-        open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','U','V','W','Eta']),
-        open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
-        open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
-        #open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PNH']), # often missing?
-        ])    
+def open_mitgcm_output_all_vars(data_dir,var='all',iter='all',):
+    """Returns a dataset associated with the specified directory (which contains the model output) that has all variables by default
+    (including ['S','T','U','V','Eta'] and ['PH','PHL']), OR you can pass in a "var", which in this case refers to a variable that you
+    might want to plot like 'T', 'S', 'rho', 'rho_theta', 'N2', and 'quiver'. Note that the pressures have -1 time indices 
+    compared to the other vars."""
+    if var=='all':
+        ds = xr.merge([ # The pressures sometimes are missing the first timestep
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','U','V','W','Eta']),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
+            #open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PNH']), # often missing?
+            ])
+    elif var=='T': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['T'])
+    elif var=='S': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S'])
+    elif var=='quiver': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['U','V','W'])
+    elif var=='rho' or var=='rho_theta': 
+        ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T'])
+    elif var=='N2':
+        #ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T'])
+        ds = xr.merge([ # The pressures sometimes are missing the first timestep
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','Eta']), # Eta improves the Z accuracy slightly
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
+        #    open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
+            ])
     # For some reason the iters parameter isn't working as I expect, so I'm using this "if" instead. 
     # Likely slow but maybe not due to lazy loading. Square brackets are to preserve the len-1 time dim.
+    else:
+        print("Illegal variable name")
+        return
     if iter!='all': ds = ds.isel(time=[iter]) 
     return ds
 
@@ -65,28 +83,29 @@ def cell_diffs(ds):
     return cell_diffs # should it be negative?
 
 def calculate_pressure(ds,rhoConst=1000,g=10):
-    """Calculates hydrostatic sea pressure, since the model doesn't output it directly. Adds it as a variable.
+    """Calculates hydrostatic sea pressure, since the model doesn't output it directly. Adds pressure as a variable. 
     In MOST cases, rho = rho_const + rho_prime (always confirm this with your specific simulation).
     And the output PHIHYD (i.e., PH from the diagnostic package) is calculated with 
     the contribution of rho_const omitted, i.e., using rho_prime.
     Hence, P = (PHIHYD + gravity*abs(RC))*rho_const where RC is cell depth. 
     See "stratification.ipynb" or http://mailman.mitgcm.org/pipermail/mitgcm-support/2013-November/008636.html for more details."""
-    ds['p'] = (-1)*g*rhoConst*(ds['Z']+ds['Eta']) + ds['PH']*rhoConst
+    print("UPDATE THIS TO USE RHOREF AND MAYBE PREF WITH TEOS")
+    ds['p'] = (-1)*g*rhoConst*(ds['Z']+ds['Eta']) + ds['PH']*rhoConst # Eta improves the Z accuracy slightly
     ds['p'] = ds['p'].transpose('time', 'Z', 'YC', 'XC')
-    return ds
+    return ds 
 
 def calculate_sigma0_TEOS10(ds,lon=-27.0048,lat=-69.0005):
     """Calculates potential density using the Gibbs-SeaWater package.
     Gibbs-SeaWater is based on TEOS-10, so this only works if eosType='TEOS10'.
-    Adds sigma0 as a variable.
+    Adds sigma0 as a variable named 'rho_theta'.
     sigma0 is potential density in sigma notation with p_ref=0 dbar, i.e., if all water is brought to p_ref adiabatically.
     (I am assuming that thetas are referenced to 0 dbar; should probably check this.)"""
     # Note with TEOS10, the salinity is absolute, not practical (see the MITgcm manual; 'If 
     # TEOS-10 is selected, the model variable salt can be interpreted as “Absolute Salinity”.')
     # See https://www.teos-10.org/pubs/gsw/html/gsw_sigma0.html for more details
     print("You need to test if you can use gsw in this way, feeding it ds and da etc")
-    CT = gsw.CT_from_pt(ds['S'],ds['T'])
-    ds['sigma0'] = gsw.sigma0(ds['S'],CT)
+    #CT = gsw.CT_from_pt(ds['S'],ds['T'])
+    ds['rho_theta'] = gsw.sigma0(ds['S'],gsw.CT_from_pt(ds['S'],ds['T']))
     return ds
 
 def calculate_N2_TEOS10(ds,lat=-69.0005,rhoConst=1000,g=10):
@@ -99,12 +118,11 @@ def calculate_N2_TEOS10(ds,lat=-69.0005,rhoConst=1000,g=10):
     # TEOS-10 is selected, the model variable salt can be interpreted as “Absolute Salinity”.')
     # See https://www.teos-10.org/pubs/gsw/html/gsw_sigma0.html for more details
     print("You need to test if you can use gsw in this way, feeding it ds and da etc")
-    CT = gsw.CT_from_pt(ds['S'],ds['T'])
+    print("The use of gsw tools causes memory usage to explode and the job to be killed")
+    print("UPDATE THIS TO USE RHOREF AND MAYBE PREF WITH TEOS")
+    ds['T'] = gsw.CT_from_pt(ds['S'],ds['T']) # The output from CT_from_pt is large, so we're writing over T
     ds = calculate_pressure(ds,rhoConst=rhoConst,g=g) # Adds pressure as a variable
-    N2, p_mid = gsw.Nsquared(ds['S'],CT,ds['p'],lat=lat)
-    print(N2)
-    print(p_mid)
-    print(ds)
+    N2,p_mid = gsw.Nsquared(ds['S'],ds['T'],ds['p'],lat=lat)
     return
 
 def calculate_N2_linear_EOS(ds,g=10,a=0.0002,b=0):
@@ -126,7 +144,7 @@ def calculate_N2_linear_EOS(ds,g=10,a=0.0002,b=0):
 
 if __name__ == "__main__":
     
-    run = 'mrb_027'
+    run = 'mrb_028'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
     ds = open_mitgcm_output_all_vars(data_dir)
     calculate_N2_TEOS10(ds)
