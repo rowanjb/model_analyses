@@ -78,12 +78,86 @@ def from_woa():
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.WOA2015.'+size+'.'+season+'.bin')
     pseudo = np.tile(s,(numAx2,numAx1,1))
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.WOA2015.'+size+'.'+season+'.bin')
-    
+
+def from_mooring():
+    """Script for making binaries out of mooring data.
+    Note the WOA summer (so S.H. winter) climatologies show that surface salinity equals 50 m salinity.
+    Similar for temp, but with warming in the uppwer 5ish meters.
+    I will set the upper 50 m temp and salinity to the value at the 50 m sensor.
+    I will for now do the same for under 220 m.
+    BUT in the future consider splicing in the WOA clims above and/or below the sensor data."""
+
+    # Parameters
+    num_levels, numAx1, numAx2 = 50, 150, 150
+    size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
+    pot_temp = True # Whether you want pot or in-situ temp
+    abs_salt = True # Whether you want abs or practical salt
+
+    # Depths used in the model
+    dy = np.array([
+            0.4, 1.2, 2.0, 2.8, 3.6, 4.4, 5.2, 6.0, 6.8, 7.6,
+            8.4, 9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,
+            16.4,17.2,18.0,18.8,19.6,20.4,21.2,22.0,22.8,23.6,
+            24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,
+            32.4,33.2,34.0,34.8,35.6,36.4,37.2,38.0,38.8,39.6])
+    y = np.zeros(len(dy))
+    for i,n in enumerate(dy): # Getting sell depths
+        if i==0: y[i] = n/2
+        else: y[i] = np.sum(dy[:i]) + n/2
+
+    # Opening the mooring data
+    ds = mooring_analyses.open_mooring_ml_data()
+    ds = mooring_analyses.correct_mooring_salinities(ds)
+    ds = ds.drop_vars('P').dropna(dim='depth') # Drop P and then you can get rid of depths with no salt observations
+
+    # Select a day at the start of September, right before the plume
+    ds = ds.sel(day='2021-09-01T00:00:00.000000000')
+
+    # Determining which salt and temp to use
+    if pot_temp: # If potential temp, then...
+        dst = gsw.pt0_from_t(ds['SA'],ds['T'],ds['p_from_z']).values # Let t now be potential temperature
+        t_name = 'theta' # Let the var name in the file be theta
+    else: # etc
+        dst = ds['T'].values
+        t_name = 'T'
+    if abs_salt: 
+        dss = ds['SA'].values
+        s_name = 'SA'
+    else:
+        dss = ds['S'].values
+        s_name = 'S'
+
+    # Interpolating/filling values
+    s, t = np.empty(len(y)), np.empty(len(y))
+    for n,d in enumerate(y):
+        if d<50:
+            s[n], t[n] = dss[0], dst[0]
+        elif d<135:
+            del_s = dss[1] - dss[0]
+            del_t = dst[1] - dst[0]
+            weight = (d-50)/(135-50)
+            s[n] = dss[0] + del_s*weight
+            t[n] = dst[0] + del_t*weight
+        elif d<220:
+            del_s = dss[2] - dss[1]
+            del_t = dst[2] - dst[1]
+            weight = (d-135)/(220-135)
+            s[n] = dss[1] + del_s*weight
+            t[n] = dst[1] + del_t*weight
+        else:
+            s[n], t[n] = dss[2], dst[2]
+
+    pseudo = np.tile(t,(numAx2,numAx1,1))
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooring.'+size+'.bin')
+    pseudo = np.tile(s,(numAx2,numAx1,1))
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooring.'+size+'.bin')
+
 def Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
-    newQ = np.zeros(np.shape(Q)) # Changing this but not testing: np.zeros((150,150))
-    newQ[25:125,25:125] = Q/12
-    xmitgcm.utils.write_to_binary(newQ.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_WOA2.150x150.bin')
+    Q = Q*3
+    newQ = np.zeros((150,150))
+    newQ[25:125,25:125] = Q
+    xmitgcm.utils.write_to_binary(newQ.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin')
 
 def Q_surf_3D():
     Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -133,8 +207,6 @@ def V():
 def read_binaries_150x150(binary):
     """Reads binaries."""
     P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(150,150), dtype=np.dtype('>f4') )
-    print(np.shape(P))
-    quit()
     X = np.linspace(0, 149, 150)
     Y = np.linspace(0, 149, 150)
     fig, ax = plt.subplots()
@@ -185,16 +257,17 @@ def read_binaries_100x100xt(binary):
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
 if __name__ == "__main__":
-    from_woa()
-    #from_mooring()
-    #new_Q_surf()
-    #new_Eta()
-    #new_U()
-    #new_V()
+    #from_woa()
+    from_mooring()
+    #Q_surf()
+    #Eta()
+    #U()
+    #V()
     #constant_S_or_T()
     #Q_surf_3D()
-    #read_binaries_150x150('Qnet_75W.40mCirc.150x150.bin')
-    #read_binaries_100x100('Qnet_75W.40mCirc.100x100.bin')
-    #read_binaries_50x100x100('S.const34.8.50x100x100.bin')
-    #read_binaries_50x150x150('SA.WOA2015.50x150x150.autumn.bin')
+    #read_binaries_150x150('Qnet_2500W.40mCirc.150x150.bin')
+    #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
+    #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
+    read_binaries_50x150x150('theta.mooring.50x150x150.bin')
+    read_binaries_50x150x150('SA.mooring.50x150x150.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin')
