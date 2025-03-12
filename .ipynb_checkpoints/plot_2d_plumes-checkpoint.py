@@ -40,7 +40,7 @@ def plot_vertical_plane(da, var, figs_dir, vmin=None, vmax=None):
         'T':          "$θ$ ($℃$)",  
         'S':          "Salinity ($g$ $kg^{-1}$)", # Might depend on EOS?
         'rho':        r"$\rho_{t}$ ($kg$ $m^{-3}$)",
-        'rho_theta':  r"$\sigma_{θ}$ ($kg$ $m^{-3}$)",
+        'rho_theta':  r"$\rho_{θ}$ ($kg$ $m^{-3}$)",
         'N2':         "Buoyancy frequency ($s^{-2}$)",
         'quiver':     "Speed ($m$ $s^{-1}$)"
         }
@@ -65,7 +65,7 @@ def plot_vertical_plane(da, var, figs_dir, vmin=None, vmax=None):
     if var=='quiver': # i.e., if you have multiple variables (i.e., da is really a dataset)
         p = xr.plot.pcolormesh(da['speed'], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var]})
         n = 3
-        da.isel(YC=slice(None,None,n),Z=slice(None,None,n)).plot.quiver(x='YC',y='Z',u='V',v='W',scale=0.33*n, add_guide=False) # old scale was 15
+        da.isel(YC=slice(None,None,n),Z=slice(None,None,n)).plot.quiver(x='YC',y='Z',u='V',v='W',scale=15, add_guide=False)
     else:
         p = xr.plot.pcolormesh(da[var], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var]})
     cbar = p.colorbar
@@ -84,15 +84,12 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
     """Run plot_vertical_plane in a loop over time.
     Do it this way (separate functions) so that plots for 1 time can be created with ease."""
     
-    # Creating filepaths and opening the data
-    # Reason for the try-except is that there are only two locations where the data might be
+    # Some necessary filepaths
+    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
     figs_dir = '/albedo/home/robrow001/model_analyses/figures/figs2D_'+run+'_'+var
-    try:
-        data_dir = '../MITgcm/so_plumes/'+run
-        ds = bma.open_mitgcm_output_all_vars(data_dir,var=var)
-    except: 
-        data_dir = '../../../work/projects/p_so-clim/GCM_data/RowanMITgcm/'+run
-        ds = bma.open_mitgcm_output_all_vars(data_dir,var=var)    
+    
+    # Opening the data
+    ds = bma.open_mitgcm_output_all_vars(data_dir,var=var)
     
     # Adding any necessary variables (I'll keep expanding this with new variables later)
     if var=='zeta':
@@ -110,19 +107,9 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
             print("You need to specify eos='LINEAR' or eos='TEOS10'")
             return
         print('N2 added to the dataset')
-    if var=='rho_theta':
-        if eos=='LINEAR':
-            print("Can't yet calculate potential density with eos='LINEAR'")
-            return
-        elif eos=='TEOS10':
-            ds = bma.calculate_sigma0_TEOS10(ds)
-        else:
-            print("You need to specify eos='LINEAR' or eos='TEOS10'")
-            return
-        print('rho_theta added to the dataset')
 
     # Extracting the variable that we're interested in 
-    var_dir = {'T':['T'],'S':['S'],'quiver':['V','W','speed'],'N2':['N2'],'rho_theta':['rho_theta']} # Needed 
+    var_dir = {'T':['T'],'S':['S'],'quiver':['V','W','speed'],'N2':['N2']} # Needed 
     da = ds[var_dir[var]]
 
     # Plotting    
@@ -131,8 +118,9 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
         plot_vertical_plane(da.isel(time=i_time), var, figs_dir, vmin=vmin, vmax=vmax)
 
 if __name__ == "__main__":
-    #run_plot_vertical_plane(run='mrb_034', var='quiver', vmin=0, vmax=0.2)
-    run_plot_vertical_plane(run='mrb_033', var='quiver', vmin=0, vmax=0.2)
-    #run_plot_vertical_plane(run='mrb_033', var='T', vmin=-2, vmax=2)
-    #run_plot_vertical_plane(run='mrb_033', var='S', vmin=34.4, vmax=34.9)
-    #run_plot_vertical_plane(run='mrb_033', var='rho_theta', vmin=27.7, vmax=27.85,eos='TEOS10')
+    run_plot_vertical_plane(run='mrb_028', var='N2',eos='TEOS10')
+    quit()
+    run_plot_vertical_plane(run='mrb_028', var='quiver', vmin=0, vmax=2)
+    run_plot_vertical_plane(run='mrb_028', var='T', vmin=-2, vmax=2)
+    run_plot_vertical_plane(run='mrb_028', var='S', vmin=34.4, vmax=34.9)
+    

@@ -30,6 +30,7 @@ core
 *.pdf
 *.nc 
 *.mp4
+*.zarr*
 *figs*
 RUN_Python_albedo.sh
 

@@ -19,75 +19,77 @@ def chop_ds(ds):
     ds = ds.isel(XC=slice(0,X),XG=slice(0,X))#YC=slice(0,Y),YG=slice(0,Y))
     return ds
 
-def get_mins_and_maxs(ds,variable,plane):
-    """Return the min and max values pertinent to the plots (i.e., on the exposed planes)."""
-    da = ds[variable]
-    if plane=='horizontal':
-        min = da.isel(Z=0).min().to_numpy()
-        max = da.isel(Z=0).max().to_numpy()
-    elif plane=='vertical':
-        try: 
-            min = da.isel(XC=-1).min().to_numpy()
-            max = da.isel(XC=-1).max().to_numpy()
-        except:
-            min = da.isel(XG=-1).min().to_numpy()
-            max = da.isel(XG=-1).max().to_numpy()
-    minmax = min, max
-    return minmax
-
-def plume_plot_engine(ds, run, figs_dir, vertical_plane_variable, horizontal_plane_variable, horizontal_plane_minmax, vertical_plane_minmax, i_time=10, dt=10, cb=False):
-    """Plotting mechanism for creating ONE plot. 
-    i_time is the index of the time you want to plot. 
-    minmax parameters are tuples. 
-    cb controls the colourbar; can either plot the cb or the fig, not both."""
+def plume_plot_engine(ds, run, vertical_plane_variable, horizontal_plane_variable, dt=10):
+    """Plotting mechanism for creating ONE 3D plot.
+    Reduced complexity compared to V1."""
     # https://matplotlib.org/stable/gallery/mplot3d/box3d.html#sphx-glr-gallery-mplot3d-box3d-py 
 
+    # Essentially creating a grid (would be cool to try open in paraview one day)
     Z, Y, X = np.meshgrid(ds['Z'].values, ds['YC'].values, ds['XC'].values, indexing='ij')
 
-    timestep_str = str(ds['time'].dt.seconds.to_numpy()) #mightn't work > 1 day!!!!!!!
+    # Getting the time information
+    timestep_str = str(ds['time'].dt.seconds.to_numpy()[0]) #mightn't work > 1 day!!!!!!!
     time_hours_str = str(float(timestep_str)*dt/60/60) # Have to do this manually 
 
+    # Identifying the important grid faces
     horizontal_np = ds[horizontal_plane_variable].isel(Z=0).to_numpy()
-    try: vertical_np = ds[vertical_plane_variable].isel(XC=-1).to_numpy()
+    try: vertical_np = ds[vertical_plane_variable].isel(XC=-1).to_numpy() 
     except: vertical_np = ds[vertical_plane_variable].isel(XG=-1).to_numpy()
 
-    horizontal_min, horizontal_max = horizontal_plane_minmax 
-    linscale, linthresh = 0.001, 0.0001
-    positive_levels = np.logspace(np.log10(linthresh), np.log10(horizontal_max), 51)
-    negative_levels = -np.logspace(np.log10(linthresh), np.log10(-horizontal_min), 51)
-    levels = np.concatenate([negative_levels[::-1], [0], positive_levels]) #[0]
-    kw_horizontal = { 'vmin': horizontal_min, 'vmax': horizontal_max, 'levels': levels,
-        'norm': SymLogNorm(linscale=linscale, linthresh=linthresh, vmin=horizontal_min, vmax=horizontal_max)}
+    # Clipping the data... not great scientifically but I THINK it relates to numerical issues not results
+    if vertical_plane_variable=='T':
+        vertical_np = np.where(vertical_np>-2,vertical_np,-2)
+        vertical_np = np.where(vertical_np<2,vertical_np,2)
+    if horizontal_plane_variable=='T':
+        horizontal_np = np.where(horizontal_np>-2,horizontal_np,-2)
+        horizontal_np = np.where(horizontal_np<2,horizontal_np,2)
 
-    vertical_min, vertical_max = vertical_plane_minmax
-    
-    """
+    # Specifying the scaling of the coutourf parameters in the horz plane
+    if horizontal_plane_variable=='zeta':
+        linscale, linthresh = 0.001, 0.0001
+        vmin, vmax = -0.04, 0.04
+        positive_levels = np.logspace(np.log10(linthresh), np.log10(vmax), 51)
+        negative_levels = -np.logspace(np.log10(linthresh), np.log10(-vmin), 51) #np.log10 can't be neg
+        levels = np.concatenate([negative_levels[::-1], [0], positive_levels]) #[0]
+        kw_horizontal = {'levels': levels, 'cmap':'PiYG', 'norm': SymLogNorm(linscale=linscale, linthresh=linthresh, vmin=vmin, vmax=vmax)}
+    elif horizontal_plane_variable=='T':
+        kw_horizontal = {'levels': 102, 'norm': 'linear', 'vmin':-2, 'vmax':2, 'cmap':'seismic'} 
+    elif horizontal_plane_variable=='S':
+        kw_horizontal = {'levels': 102, 'norm': 'linear', 'vmin':33.8, 'vmax':35.1, 'cmap':'viridis'} 
+
+    # Specifying the scaling of the coutourf parameters in the vert plane
     if vertical_plane_variable=='T': 
-        kw_vertical = {'levels': 102, 'vmin': vertical_min, 'vmax': vertical_max, 'norm': 'linear'} 
+        kw_vertical = {'levels': 102, 'norm': 'linear', 'vmin':-2, 'vmax':2} 
         cm = 'seismic' 
-    elif vertical_plane_variable=='s':
-        kw_vertical = {'levels': 102, 'vmin': vertical_min, 'vmax': vertical_max, 'norm': 'linear'}
+    elif vertical_plane_variable=='S':
+        kw_vertical = {'levels': 102, 'norm': 'linear', 'vmin':33.97, 'vmax':35}
         cm = 'viridis' 
-    """
+    elif vertical_plane_variable=='N2':
+        linscale, linthresh = 0.0001, 0.00001
+        vmin, vmax = -0.0025, 0.0025
+        positive_levels = np.logspace(np.log10(linthresh), np.log10(vmax), 51)
+        negative_levels = -np.logspace(np.log10(linthresh), np.log10(-vmin), 51) #np.log10 can't be neg
+        levels = np.concatenate([negative_levels[::-1], [0], positive_levels]) #[0]
+        kw_vertical = {'levels': levels, 'norm': SymLogNorm(linscale=linscale, linthresh=linthresh, vmin=vmin, vmax=vmax)}
+        cm='RdGy_r'
 
     # Create a figure with 3D ax
-    fig = plt.figure(figsize=(5, 4))
+    plt.rcParams["font.family"] = "serif" # Change the base font
+    fig = plt.figure(figsize=(4,4))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Plot contour surfaces
+    # Plot horizontal surface
     C_horizontal = ax.contourf(
-        X[0, :, :], Y[0, :, :], horizontal_np[:, :],
-        zdir='z', offset=0, cmap='seismic', **kw_horizontal
+        X[0, :, :], Y[0, :, :], horizontal_np[0, :, :], # The "0" in the horz_np array is the time dim
+        zdir='z', offset=0, **kw_horizontal
     )
 
-    norm = Normalize(vmin=vertical_min, vmax=vertical_max)
-    print(vertical_plane_minmax)
+    # Plot vertical surface
     C_vertical = ax.contourf(
-        vertical_np[:, :], Y[:, :, -1], Z[:, :, -1], #the :-1's are to avoid plotting the bottom row of non-zero values
-        zdir='x', offset=X.max(), cmap='seismic', levels=102, vmin=vertical_min, vmax=vertical_max, norm=norm
+        # The "0" in the vert_np array is the time dim
+        vertical_np[0, :, :], Y[:, :, -1], Z[:, :, -1], #the :-1's are to avoid plotting the bottom row of non-zero values
+        zdir='x', offset=X.max(), cmap=cm, **kw_vertical
     )
-    cbar = fig.colorbar(C_vertical, ax=ax, fraction=0.02, pad=0.1, label='Name [units]')
-    cbar.set_ticks([vertical_min, vertical_max])
 
     # Set limits of the plot from coord limits
     xmin, xmax = X.min(), X.max()
@@ -97,91 +99,140 @@ def plume_plot_engine(ds, run, figs_dir, vertical_plane_variable, horizontal_pla
 
     # Set zoom and angle view
     ax.view_init(40, -30, 0)
-    ax.set_box_aspect(None, zoom=0.9)
+    ax.set_box_aspect(None, zoom=9)
 
-    # Scale X and Y axes properly
+    # Scale X and Y axes 
     ax.set_aspect('equalxy')
-    
-    #https://stackoverflow.com/questions/44001613/matplotlib-3d-surface-plot-turn-off-background-but-keep-axes
-    # make the panes transparent
+
+    # Reference: https://stackoverflow.com/questions/44001613/matplotlib-3d-surface-plot-turn-off-background-but-keep-axes
+    # Make the panes transparent
     ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
     ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
     ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-    # make the grid lines transparent
+
+    # Make the grid lines transparent
     ax.xaxis._axinfo["grid"]['color'] =  (1,1,1,0)
     ax.yaxis._axinfo["grid"]['color'] =  (1,1,1,0)
     ax.zaxis._axinfo["grid"]['color'] =  (1,1,1,0)
 
-    # Set labels and zticks
-    ax.set(
-        xlabel='X ($m$)',
-        ylabel='Y ($m$)',
-        zlabel='Depth ($m$)',
-    )
-
+    # Can't remember why we do this, but CAN remember that it was tedious to figure out
     ax.xaxis._axinfo['juggled'] = (2,0,0)
 
-    ax.set_title(run+', +'+time_hours_str + ' hrs')
+    # Set the title according to the timestamp
+    ax.set_title('+'+time_hours_str + ' hrs',fontsize=11) #run+', 
+
+    # Set labels etc
+    ax.set_xlabel('X ($m$)',fontsize=9,labelpad=-2)
+    ax.tick_params(axis='x', which='major', pad=1.5, labelsize=9)
+    ax.set_ylabel('Y ($m$)',fontsize=9)
+    ax.tick_params(axis='y', which='major', pad=-1, labelsize=9)
+    ax.set_zlabel('Depth ($m$)',fontsize=9)
+    ax.tick_params(axis='z', which='major', labelsize=9)
     
-    if not os.path.exists(figs_dir):
-        os.makedirs(figs_dir)
-    
+    # Colourbar stuff
+    bbox_ax = ax.get_position()
+
+    horizontal_labels = {'zeta': 'Vorticity ($s^{-1}$)', 'T': 'Temperature ($℃$)', 'S': 'Salinity ($PSU$)'}
+    cbar_horizontal_ax = fig.add_axes([1.15,bbox_ax.y0, 0.025, bbox_ax.y1-bbox_ax.y0]) # (left, bottom, width, height)
+    cbar_horizontal = plt.colorbar(C_horizontal, cax=cbar_horizontal_ax,shrink=0.5, pad=0.1)
+    #cbar_horizontal.formatter.set_powerlimits((0, 0))
+    #cbar_horizontal.formatter.set_useMathText(True)
+    cbar_horizontal.ax.tick_params(labelsize=9)
+    cbar_horizontal.set_label(label=horizontal_labels[horizontal_plane_variable], size=9) 
+    cbar_horizontal.update_ticks()
+
+    vertical_labels = {'N2': '$N^2$ ($s^{-2}$)', 'pot_rho': r"$\rho$ ($kg$ $m^{-3}$)", 'T': 'Temperature ($℃$)', 'S': 'Salinity ($PSU$)', 'quiver': 'Velocity ($m$ $s^{-1}$)'}
+    cbar_vertical_ax = fig.add_axes([1.4,bbox_ax.y0, 0.025, bbox_ax.y1-bbox_ax.y0])
+    cbar_vertical = plt.colorbar(C_vertical, cax=cbar_vertical_ax, extend='both', shrink=0.5, pad=0.1)
+    cbar_vertical.ax.tick_params(labelsize=9)
+    cbar_vertical.set_label(label=vertical_labels[vertical_plane_variable], size=9) 
+    #cbar_vertical.formatter.set_powerlimits((0, 0))
+    #cbar_vertical.formatter.set_useMathText(True)
+    cbar_vertical.update_ticks()
+
     # Save figure
     timestep_str = timestep_str.zfill(10)
 
-    #c_bar = fig.colorbar(C_vertical)
-    #c_bar.set_clim(vmin=vertical_min, vmax=vertical_max)
-
-    '''
-    bbox_ax = ax.get_position()
-    #C_horizontal.set_clim(horizontal_min, horizontal_max)
-    #C_vertical.set_clim(vertical_min, vertical_max)
-    cbar_horizontal_ax = fig.add_axes([0.98,bbox_ax.y0, 0.025, bbox_ax.y1-bbox_ax.y0]) #([bbox_ax.x0, 0.09, bbox_ax.x1-bbox_ax.x0, 0.02]) # for horiz bars
-    cbar_horizontal = plt.colorbar(C_horizontal, cax=cbar_horizontal_ax,shrink=0.5, pad=0.1, label='Vorticity ($s^{-1}$)')
-    cbar_horizontal.formatter.set_powerlimits((0, 0))
-    cbar_horizontal.formatter.set_useMathText(True)
-    cbar_horizontal.update_ticks()
-    vertical_labels = {'N2': '$N^2$ ($s^{-2}$)', 'rho': r"$\rho$ ($kg$ $m^{-3}$)", 'T': 'Temperature ($℃$)', 'S': 'Salinity ($PSU$)'}
-    cbar_vertical_ax = fig.add_axes([1.22,bbox_ax.y0, 0.025, bbox_ax.y1-bbox_ax.y0])
-    cbar_vertical = plt.colorbar(C_vertical, cax=cbar_vertical_ax, extend='both', shrink=0.5, pad=0.1, label=vertical_labels[vertical_plane_variable])
-    
-    cbar_vertical.formatter.set_powerlimits((0, 0))
-    cbar_vertical.formatter.set_useMathText(True)
-    cbar_vertical.update_ticks()
-    '''
-    plt.savefig(figs_dir+'/plume_'+timestep_str+'.png',dpi=450,bbox_inches="tight")
-    print(figs_dir+'/plume_'+timestep_str+'.png')
+    filepath = './figures/figs_3D/'+run+'_'+timestep_str+'_'+vertical_plane_variable+'_'+horizontal_plane_variable+'_4x4.png'
+    plt.savefig(filepath,dpi=450,bbox_inches="tight")
+    print(filepath+' saved')
     plt.close()
 
-def run_plume_plot(run,vertical_plane_variable='T',horizontal_plane_variable='zeta'):
+def run_plume_plot(run,vertical_plane_variable='T',horizontal_plane_variable='zeta',i_time=10):
     
     # Some necessary filepaths
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
-    figs_dir = '/albedo/home/robrow001/model_analyses/figures/figs_'+run+'_'+horizontal_plane_variable+'_'+vertical_plane_variable
     
     # Opening the data
-    ds = bma.open_binaries_all_vars(data_dir) 
-    
+    ds = bma.open_mitgcm_output_all_vars(data_dir,i_time) 
+
     # Adding any necessary variables (I'll keep expanding this with new variables later)
     if horizontal_plane_variable=='zeta':
         ds = bma.calculate_zeta(ds) 
-    
+        print("Constructing plot with zeta in the horizontal plane")
+    elif horizontal_plane_variable=='T' or horizontal_plane_variable=='S':
+        print("Constructing plot with "+horizontal_plane_variable+" in the horizontal plane")
+    else: 
+        print("Functionality for horiz-plane variable not added... yet"); quit()
+
+    if vertical_plane_variable=='T' or vertical_plane_variable=='S': 
+        print("Constructing plot with "+vertical_plane_variable+" in the vertical plane")
+    elif vertical_plane_variable=='quiver':
+        print("Quiver functionality not yet added"); quit()
+    elif vertical_plane_variable=='N2':
+        ds = bma.calculate_N2_linear_EOS(ds)
+        print("Constructing plot with N2 in the vertical plane")
+    elif vertical_plane_variable=='pot_rho':
+        print("Potential density functionality not yet added"); quit()
+    else: 
+        print("Functionality for vert-plane variable not added... yet"); quit()
+
     # Shrink the dataset by dividing into sections and revealing the faces that you want to plot
     ds = chop_ds(ds)
     
-    # Necessary for the colourbars; can also manually specify; will make more professional later
-    vertical_plane_minmax = get_mins_and_maxs(ds,vertical_plane_variable,'vertical')
-    horizontal_plane_minmax = get_mins_and_maxs(ds,horizontal_plane_variable,'horizontal')
-    vertical_plane_minmax = (-1.8,1.8)
-    horizontal_plane_minmax = (-0.04,0.04)#(-0.0075,0.0125)
-    
     # Plotting    
     # Based on Vreugdenhil and Gayen 2021
-    i_times = len(ds.time.to_numpy())
-    for i_time in range(i_times):
-        ds_i_time = ds.isel(time=i_time)
-        plume_plot_engine(ds_i_time, run, figs_dir, vertical_plane_variable, horizontal_plane_variable, horizontal_plane_minmax, vertical_plane_minmax, i_time, dt=3) 
+    plume_plot_engine(ds, run, vertical_plane_variable, horizontal_plane_variable, dt=3) 
 
 if __name__ == "__main__":
-    run, vertical_plane_variable, horizontal_plane_variable = 'mrb_017', 'T', 'zeta'
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable)
+   
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 15
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 20
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 25
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 30
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+    '''
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 15
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 20
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 25
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 30
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+    '''
+    '''
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 0
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 15
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 20
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 25
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 30
+    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
+    '''

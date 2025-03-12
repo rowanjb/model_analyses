@@ -20,7 +20,7 @@ from mpl_toolkits import axisartist
 from mpl_toolkits.axes_grid1 import host_subplot
 
 def test_eos():
-    """Messy plot for creating a plot of profiles from various sources.
+    """Messy function for creating a plot of profiles from various sources.
     Ultimate goal was to compare different equations of state."""
     
     dy = np.array([ # Define the model cell thicknesses 
@@ -254,10 +254,13 @@ def compare_WOA_and_mooring():
     plt.savefig('figures/profiles/profiles_WOA_binaries_and_mooring_potential_density.png',bbox_inches='tight',dpi=300)
     plt.clf()
 
-#def compare_binary_and_model():
+def compare_mooring_and_model():
+    """Goal is to extract mooring profiles and model profiles as a visual checker-for similariry."""
+
     
-#def model_densities_over_time(): 
+
+
     
 if __name__ == "__main__":
     #test_eos()
-    compare_WOA_and_mooring()
+    #compare_WOA_and_mooring()
