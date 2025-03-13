@@ -90,7 +90,7 @@ def calculate_pressure(ds,rhoConst=1000,g=10):
     Hence, P = (PHIHYD + gravity*abs(RC))*rho_const where RC is cell depth. 
     See "stratification.ipynb" or http://mailman.mitgcm.org/pipermail/mitgcm-support/2013-November/008636.html for more details."""
     print("UPDATE THIS TO USE RHOREF AND MAYBE PREF WITH TEOS")
-    ds['p'] = (-1)*g*rhoConst*(ds['Z']+ds['Eta']) + ds['PH']*rhoConst # Eta improves the Z accuracy slightly
+    ds['p'] = (-1)*g*rhoConst*(ds['Z']) + ds['PH']*rhoConst # +ds['Eta'] MIGHT improve the Z accuracy slightly, but I /expect/ not
     ds['p'] = ds['p'].transpose('time', 'Z', 'YC', 'XC')
     return ds 
 
