@@ -5,11 +5,13 @@ import numpy as np
 import pandas as pd
 import xmitgcm
 import matplotlib.pylab as plt
+import matplotlib as mpl
 import xmitgcm.file_utils
 import xmitgcm.utils
 from MITgcmutils import density
 import xarray as xr
 import gsw
+import basic_model_anayses as bma
 
 import sys
 sys.path.insert(1, '../obs_analyses/')
@@ -254,13 +256,35 @@ def compare_WOA_and_mooring():
     plt.savefig('figures/profiles/profiles_WOA_binaries_and_mooring_potential_density.png',bbox_inches='tight',dpi=300)
     plt.clf()
 
-def compare_mooring_and_model():
+def compare_mooring_and_model(run):
     """Goal is to extract mooring profiles and model profiles as a visual checker-for similariry."""
 
-    
+    # Creating filepaths and opening the data
+    # Reason for the try-except is that there are only two locations where the data might be
+    try:
+        data_dir = '../MITgcm/so_plumes/'+run
+        ds = bma.open_mitgcm_output_all_vars(data_dir)
+    except: 
+        data_dir = '../../../work/projects/p_so-clim/GCM_data/RowanMITgcm/'+run
+        ds = bma.open_mitgcm_output_all_vars(data_dir)    
+    ds = ds.resample(time='1h').mean()
+    ds = bma.calculate_sigma0_TEOS10(ds)
 
-
+    fig, axs = plt.subplots(ncols=3,nrows=1) 
+    print("For now, ignoring the disagreement between ns output and endTime")
+    cmap = mpl.colormaps['viridis']
+    colours = cmap(np.linspace(0, 1, len(ds.time.values)))
+    for n,time in enumerate(ds.time.values):
+        ds['rho_theta'].isel(time=n, YC=138, XC=138).plot(y='Z',ax=axs[0],c=colours[n])
+        ds['T'].isel(time=n, YC=138, XC=138).plot(y='Z',ax=axs[1],c=colours[n])
+        ds['S'].isel(time=n, YC=138, XC=138).plot(y='Z',ax=axs[2],c=colours[n])
+    axs[0].set_title('Pot density')
+    axs[1].set_title('Pot temp')
+    axs[2].set_title('Abs salinity')
+    plt.tight_layout()
+    plt.savefig('test_outside.png',dpi=450,bbox_inches="tight")
     
 if __name__ == "__main__":
     #test_eos()
     #compare_WOA_and_mooring()
+    compare_mooring_and_model('mrb_034')

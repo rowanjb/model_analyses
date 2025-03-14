@@ -190,19 +190,20 @@ def Q_surf():
 def Q_surf_3D():
     Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
     Q1 = np.zeros(np.shape(Q2)) # Starting conditions (hend "1")
-    Q = np.stack([Q1, Q2, Q2, Q2, Q2, 
-                  Q2, Q1, Q1, Q1, Q1, 
+    Q = np.stack([Q2, Q2, Q2, Q2, Q2, 
+                  Q2, Q2, Q1, Q1, Q1, 
                   Q1, Q1, Q1, Q1, Q1, 
                   Q1, Q1, Q1, Q1, Q1, 
-                  Q1, Q1, Q1, Q1, Q1,
-                  Q1, Q1, Q1, Q1, Q1,
-                  Q1, Q1, Q1, Q1, Q1,
-                  Q1, Q1, Q1, Q1, Q1,
-                  Q1, Q1, Q1, Q1, Q1,
-                  Q1, Q1, Q1,
+                  Q1, Q1, Q1, Q1, 
+                  #Q1,
+                  #Q1, Q1, Q1, Q1, Q1,
+                  #Q1, Q1, Q1, Q1, Q1,
+                  #Q1, Q1, Q1, Q1, Q1,
+                  #Q1, Q1, Q1, Q1, Q1,
+                  #Q1, Q1, Q1,
                   ])
     print(np.shape(Q))
-    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150x48.bin' )
+    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc_v2.150x150x24.bin' )
 
 def salt_flux():
     S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -279,9 +280,9 @@ def read_binaries_50x100x100(binary):
     cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
-def read_binaries_100x100xt(binary):
+def read_binaries_100x100xt(binary,length):
     """Reads binaries with a time dimension."""
-    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(100,100,24), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
+    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(100,100,length), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
     X = np.linspace(0, 99, 100)#(0, 41, 42)
     Y = np.linspace(0, 99, 100)#(0, 19, 20)
     _,_,z = np.shape(P)
@@ -291,9 +292,21 @@ def read_binaries_100x100xt(binary):
         cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
+def read_binaries_150x150xt(binary,length):
+    """Reads binaries with a time dimension."""
+    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(150,150,length), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
+    X = np.linspace(0, 149, 150)#(0, 41, 42)
+    Y = np.linspace(0, 149, 150)#(0, 19, 20)
+    _,_,z = np.shape(P)
+    fig, axs = plt.subplots(nrows=z,ncols=1,squeeze=True,figsize=(1,12))
+    for i in range(z):
+        cs = axs[i].pcolormesh(Y, X, P[:,:,i])
+        cbar = fig.colorbar(cs)
+    plt.savefig('binary_plots/'+binary[:-4]+'.png')
+
 if __name__ == "__main__":
     #from_woa()
-    from_mooring()
+    #from_mooring()
     #Q_surf()
     #Eta()
     #U()
@@ -303,6 +316,7 @@ if __name__ == "__main__":
     #read_binaries_150x150('Qnet_2500W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
-    read_binaries_50x150x150('theta.mooring.50x150x150.500m.bin')
-    read_binaries_50x150x150('SA.mooring.50x150x150.500m.bin')
-    #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin')
+    #read_binaries_50x150x150('theta.mooring.50x150x150.500m.bin')
+    #read_binaries_50x150x150('SA.mooring.50x150x150.500m.bin')
+    #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
+    read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
