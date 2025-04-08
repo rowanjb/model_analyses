@@ -198,11 +198,11 @@ def from_mooring():
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooringSept14.'+size+'.'+depth+'.bin')
 
 def Q_surf():
-    Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
-    Q = Q*3
-    newQ = np.zeros((150,150))
-    newQ[25:125,25:125] = Q
-    xmitgcm.utils.write_to_binary(newQ.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin')
+    Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
+    Q = Q/2
+    #newQ = np.zeros((150,150))
+    #newQ[25:125,25:125] = Q
+    xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_1250W.40mCirc.150x150.bin')
 
 def Q_surf_3D():
     Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
@@ -326,19 +326,19 @@ def read_binaries_150x150xt(binary,length):
 
 if __name__ == "__main__":
     #from_woa()
-    from_mooring()
-    #Q_surf()
+    #from_mooring()
+    Q_surf()
     #Eta()
     #U()
     #V()
     #constant_S_or_T()
     #Q_surf_3D()
-    #read_binaries_150x150('Qnet_2500W.40mCirc.150x150.bin')
+    read_binaries_150x150('Qnet_1250W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
     #read_binaries_50x150x150('V.rand001init.50x150x150.bin')
     #read_binaries_50x150x150('U.rand001init.50x150x150.bin')
-    read_binaries_50x150x150('SA.mooringSept14.50x150x150.500m.bin')
-    read_binaries_50x150x150('theta.mooringSept14.50x150x150.500m.bin')
+    #read_binaries_50x150x150('SA.mooringSept14.50x150x150.500m.bin')
+    #read_binaries_50x150x150('theta.mooringSept14.50x150x150.500m.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
     #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
