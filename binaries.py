@@ -10,6 +10,8 @@ import xmitgcm.utils
 from MITgcmutils import density
 import xarray as xr
 import gsw
+import basic_model_anayses as bma 
+import cell_thickness_calculator as ctc
 
 import sys
 sys.path.insert(1, '../obs_analyses/')
@@ -31,6 +33,8 @@ def from_woa():
     salt_dev_perc = '90' # Percentage of salt deviation from mean (0=full deviation, 100=no deviation)
 
     #== Note: Depths used in the model / cell thicknesses are parabolas scaled to the domain depth. ==#
+    # Note this should be changed in the future to the method used in from_mooring
+    print("Check how you get the dy; it's possibly wrong!")
     # 50 cells in 1000 m: 
     dy1000m = np.array([0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8,7.6,8.4,9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,16.4,17.2,18.0,
                         18.8,19.6,20.4,21.2,22.0,22.8,23.6, 24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,32.4,33.2,34.0,
@@ -83,11 +87,15 @@ def from_woa():
 
 def from_mooring():
     """Script for making binaries out of mooring data.
-    Note the WOA summer (so S.H. winter) climatologies show that surface salinity equals 50 m salinity.
-    Similar for temp, but with warming in the uppwer 5ish meters.
-    I will set the upper 50 m temp and salinity to the value at the 50 m sensor.
-    I will for now do the same for under 220 m.
-    BUT in the future consider splicing in the WOA clims above and/or below the sensor data."""
+    Mooring data is interpolated onto the model grid between (e.g.,) 50 and 220 m.
+    Outside these bounds, WOA climatology is used (it's "spliced in", if ya know what I mean). 
+    """    
+    # "Deprecated" docstring
+    #Note the WOA summer (so S.H. winter) climatologies show that surface salinity equals 50 m salinity.
+    #Similar for temp, but with warming in the uppwer 5ish meters.
+    #I will set the upper 50 m temp and salinity to the value at the 50 m sensor.
+    #I will for now do the same for under 220 m.
+    #BUT in the future consider splicing in the WOA clims above and/or below the sensor data."""
 
     # Parameters
     depth = '500m'
@@ -96,27 +104,36 @@ def from_mooring():
     pot_temp = True # Whether you want pot or in-situ temp
     abs_salt = True # Whether you want abs or practical salt
 
-    #== Note: Depths used in the model / cell thicknesses are parabolas scaled to the domain depth. ==#
-    # 50 cells in 1000 m: 
-    dy1000m = np.array([0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8,7.6,8.4,9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,16.4,17.2,18.0,
-                        18.8,19.6,20.4,21.2,22.0,22.8,23.6, 24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,32.4,33.2,34.0,
-                        34.8,35.6,36.4,37.2,38.0,38.8,39.6])
-    dy500m = dy1000m/2 # 50 cells in 500 m
+    #== Note: Depths used in the model / cell thicknesses can vary. Check your specific criteria and modify "scaling". ==#
+    # Deprecating this section and replacing with ctc
+    #if scaling==0: # If scaling is 0, then using these parabolic thicknesses
+    #    dy1000m = np.array([0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8,7.6,8.4,9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,16.4,17.2,18.0,
+    #                        18.8,19.6,20.4,21.2,22.0,22.8,23.6, 24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,32.4,33.2,34.0,
+    #                        34.8,35.6,36.4,37.2,38.0,38.8,39.6])
+    #    dy500m = dy1000m/2 # 50 cells in 500 m
+    #elif scaling==1: # If scaling is 1, then use these thicknesses (which I /think/ come from "cell_thickness_calculator...")
+    #...    
+    # Implementing usage of ctc after mrb_036; before this, you'll need to look at each run's data file for dz lists
+    x1, x2 = 1, 50 # Indices of top and bottom cells
+    fx1 = 1 # Depth of bottom of top cell
+    min_slope = 1 # Minimum slope (should probably > x1)
+    A, B, C, _, _ = ctc.find_parameters(x1, x2, fx1, 500, min_slope) # In the future, consider rewriting this so that it doesn't
+    dy500m = ctc.return_cell_thicknesses(x1, x2, 500, A, B, C)             # repeat for 500 and 1000 m
+    A, B, C, _, _ = ctc.find_parameters(x1, x2, fx1, 1000, min_slope)
+    dy1000m = ctc.return_cell_thicknesses(x1, x2, 1000, A, B, C)
     dy_dict = {'1000m':dy1000m, '500m':dy500m}
 
-    # Depths used in the model
+    # Depths used in the model (calculated to the centre of the cells)
     y = np.zeros(len(dy_dict[depth]))
     for i,n in enumerate(dy_dict[depth]): # Getting sell depths
         if i==0: y[i] = n/2
         else: y[i] = np.sum(dy_dict[depth][:i]) + n/2
-    
-    print(dy_dict[depth])
 
     # Opening the mooring data
     ds = mooring_analyses.open_mooring_ml_data()
     ds = mooring_analyses.correct_mooring_salinities(ds)
-    ds = ds.drop_vars('P').dropna(dim='depth') # Drop P and then you can get rid of depths with no salt observations
-    ds = ds.sel(day='2021-09-01T00:00:00.000000000') # Select a day at the start of September, right before the plume
+    ds = ds.drop_vars('P').dropna(dim='depth') # Drop P and then you can get rid of depths with no salt observations w/ dropna
+    ds = ds.sel(day='2021-09-14T00:00:00.000000000') # Select a day at the start of September, right before the plume
 
     # Opening the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
     with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
@@ -124,33 +141,33 @@ def from_mooring():
     s_woa = das.isel(time=2).interp(depth=y) # time=2 refers to "summer"
     dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
     t_woa = dat.isel(time=2).interp(depth=y) # time=2 refers to "summer"
-    p = gsw.p_from_z((-1)*y,lat=-69.0005) # Calculating pressure from depth, absolute salinity, and potential temperature 
+    p = gsw.p_from_z((-1)*y,lat=-69.0005) # Calculating pressure from depth, then getting absolute salinity, and potential temperature 
     SA = gsw.SA_from_SP(s_woa,p,lat=-69.0005,lon=-27.0048)           # ...(you should want theta/pt---this is what the model demands!)
     pt = gsw.pt0_from_t(SA,t_woa,p)
 
     # Determining which salt and temp to use
-    if pot_temp: # If potential temp, then...
-        dst = gsw.pt0_from_t(ds['SA'],ds['T'],ds['p_from_z']).values # Let t now be potential temperature
+    if pot_temp: # If potential temp is what we're looking for, then...
+        dst = gsw.pt0_from_t(ds['SA'],ds['T'],ds['p_from_z']).values # Let t (mooring) be potential temperature
         t_woa = pt # Let t (WOA) now be potential temperature 
         t_name = 'theta' # Let the var name in the file be theta
-    else: # etc
-        dst = ds['T'].values
+    else: # i.e., if we /don't/ want potential temp, we will use in-situ
+        dst = ds['T'].values 
         t_name = 'T'
-    if abs_salt: 
+    if abs_salt: # Similarly, if it is absolute salinity that we're looking for, then...
         dss = ds['SA'].values
         s_woa = SA # And let s (WOA) be absolute salinity
         s_name = 'SA'
-    else:
+    else: # i.e., if we /don't/ want absolute salinity, then we likely want PSU
         dss = ds['S'].values
         s_name = 'S'
     
-    # Finding depth threshold indices 
+    # Finding depth threshold indices, i.e., where in the model depths do mooring data apply
     id50  = np.where(y == np.min(y[y>50]) )
     id135 = np.where(y == np.min(y[y>135]) )
     id220 = np.where(y == np.min(y[y>220]) )
 
     # Interpolating/filling values
-    s, t = np.empty(len(y)), np.empty(len(y))
+    s, t = np.empty(len(y)), np.empty(len(y)) # These are our final s and t vectors
     for n,d in enumerate(y):
         if d<50:
             mean_diff_s = dss[0] - s_woa[id50]
@@ -176,9 +193,9 @@ def from_mooring():
             t[n] = t_woa[n] + mean_diff_t
     
     pseudo = np.tile(t,(numAx2,numAx1,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooring.'+size+'.'+depth+'.bin')
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooringSept14.'+size+'.'+depth+'.bin')
     pseudo = np.tile(s,(numAx2,numAx1,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooring.'+size+'.'+depth+'.bin')
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooringSept14.'+size+'.'+depth+'.bin')
 
 def Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_p32.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -230,15 +247,17 @@ def constant_S_or_T():
 
 def U():
     #U = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/U.120mn.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
-    U = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA.150x150.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
+    U = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA2015.50x150x150.spring.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
     U[U != np.isnan] = 0 
-    xmitgcm.utils.write_to_binary(U.flatten(order='F'), '../MITgcm/so_plumes/binaries/U.motionless.150x150.bin') #might need to be "C" if not all 0s
+    U = np.random.uniform(low = -0.001, high = 0.001, size = np.shape(U)) # For init with random velocities; can comment out
+    xmitgcm.utils.write_to_binary(U.flatten(order='F'), '../MITgcm/so_plumes/binaries/U.rand001init.50x150x150.bin') #might need to be "C" if not all 0s
 
 def V():
     #V = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/V.120mn.bin', shape=(50,100,100), dtype=np.dtype('>f4') )
-    V = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA.150x150.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
+    V = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/T.WOA2015.50x150x150.spring.bin', shape=(50,150,150), dtype=np.dtype('>f4') )
     V[V != np.isnan] = 0
-    xmitgcm.utils.write_to_binary(V.flatten(order='F'), '../MITgcm/so_plumes/binaries/V.motionless.150x150.bin') #might need to be "C" if not all 0s
+    V = np.random.uniform(low = -0.001, high = 0.001, size = np.shape(V)) # For init with random velocities; can comment out
+    xmitgcm.utils.write_to_binary(V.flatten(order='F'), '../MITgcm/so_plumes/binaries/V.rand001init.50x150x150.bin') #might need to be "C" if not all 0s
 
 def read_binaries_150x150(binary):
     """Reads binaries."""
@@ -262,6 +281,7 @@ def read_binaries_100x100(binary):
 
 def read_binaries_50x150x150(binary):
     """Reads binaries."""
+
     P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(50,150,150), dtype=np.dtype('>f4') )
     X = np.linspace(0, 149, 150)
     Z = np.linspace(0, 49, 50)
@@ -306,17 +326,19 @@ def read_binaries_150x150xt(binary,length):
 
 if __name__ == "__main__":
     #from_woa()
-    #from_mooring()
+    from_mooring()
     #Q_surf()
     #Eta()
     #U()
     #V()
     #constant_S_or_T()
-    Q_surf_3D()
+    #Q_surf_3D()
     #read_binaries_150x150('Qnet_2500W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
-    #read_binaries_50x150x150('theta.mooring.50x150x150.500m.bin')
-    #read_binaries_50x150x150('SA.mooring.50x150x150.500m.bin')
+    #read_binaries_50x150x150('V.rand001init.50x150x150.bin')
+    #read_binaries_50x150x150('U.rand001init.50x150x150.bin')
+    read_binaries_50x150x150('SA.mooringSept14.50x150x150.500m.bin')
+    read_binaries_50x150x150('theta.mooringSept14.50x150x150.500m.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
-    read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
+    #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
