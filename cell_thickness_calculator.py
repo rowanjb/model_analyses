@@ -43,16 +43,34 @@ def find_parameters(x1, x2, fx1, fx2, min_slope):
     # Return the results
     return A, B, C, slope_at_x1, slope_at_x2
 
-# Example usage:
-x1 = 1        # x1 value
-x2 = 50       # x2 value
-fx1 = 1       # f(x1)
-fx2 = 500     # f(x2)
-min_slope = 1 # Minimum slope
+# Adding this function manually to return a list of cell thicknesses, to be called elsewhere
+def return_cell_thicknesses(x1, x2, fx2, A, B, C):
+    ids = range(x1,x2+1) # Ids of the cells (should range from e.g., 1 to 50)
+    z = [A*np.exp(B*id)+C for id in ids] # list of depths /at the bottom of each cell/ 
+    # thicknesses calculated with np.diff and rounded to be integers. Prepend=0 ensures another cell at start to that len is correct
+    dz = [int(np.round(dz_float)) for dz_float in np.diff(z,prepend=0)] 
+    dfx2 = np.sum(dz) - fx2 # Seeing how far off we are from the target fx2 after rounding and converting to ints
+    dz[-1] = dz[-1] - dfx2 # Adjusting the bottom cell so that the total domain is equal to fx2
+    return dz
 
-A, B, C, slope_at_x1, slope_at_x2 = find_parameters(x1, x2, fx1, fx2, min_slope)
+if __name__=="__main__":
+    # Example usage:
+    x1 = 1        # x1 value
+    x2 = 50       # x2 value
+    fx1 = 1       # f(x1)
+    fx2 = 500     # f(x2)
+    min_slope = 1 # Minimum slope (should probably > x1)
 
-# Print the results
-print(f"A = {A}, B = {B}, C = {C}")
-print(f"Slope at x = {x1}: {slope_at_x1}")
-print(f"Slope at x = {x2}: {slope_at_x2}")
+    A, B, C, slope_at_x1, slope_at_x2 = find_parameters(x1, x2, fx1, fx2, min_slope)
+
+    # Print the results
+    print(f"A = {A}, B = {B}, C = {C}")
+    print(f"Slope at x = {x1}: {slope_at_x1}")
+    print(f"Slope at x = {x2}: {slope_at_x2}")
+
+    dz = return_cell_thicknesses(x1, x2, fx2, A, B, C)
+    print(len(dz))
+    print(np.sum(dz))
+    print(dz)
+
+
