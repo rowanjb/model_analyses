@@ -10,29 +10,32 @@ from MITgcmutils import density
 import gsw
 import xgcm
 import os
+import re
 
-def open_mitgcm_output_all_vars(data_dir,var='all',iter='all',):
+def open_mitgcm_output_all_vars(data_dir,var='all',iter='all',fix_timestep=True):
     """Returns a dataset associated with the specified directory (which contains the model output) that has all variables by default
     (including ['S','T','U','V','Eta'] and ['PH','PHL']), OR you can pass in a "var", which in this case refers to a variable that you
     might want to plot like 'T', 'S', 'rho', 'rho_theta', 'N2', and 'quiver'. Note that the pressures have -1 time indices 
-    compared to the other vars."""
+    compared to the other vars.
+    fix_timestep can be True (default; automatically search for a deltaT to apply to the output), an integer (apply this deltaT to the 
+    output) or False (not recommended; let the output time be the timestep expressed as nanoseconds)."""
     if var=='all':
         ds = xr.merge([ # The pressures sometimes are missing the first timestep
-            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','U','V','W','Eta']),
-            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
-            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','U','V','W','Eta'], iters=iter),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH'], iters=iter),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL'], iters=iter),
             #open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PNH']), # often missing?
             ])
-    elif var=='T': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['T'])
-    elif var=='S': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S'])
-    elif var=='quiver': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['U','V','W'])
+    elif var=='T': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['T'], iters=iter)
+    elif var=='S': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S'], iters=iter)
+    elif var=='quiver': ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['U','V','W'], iters=iter)
     elif var=='rho' or var=='rho_theta': 
-        ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T'])
+        ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T'], iters=iter)
     elif var=='N2':
         #ds = open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T'])
         ds = xr.merge([ # The pressures sometimes are missing the first timestep
-            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','Eta']), # Eta improves the Z accuracy slightly
-            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH']),
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['S','T','Eta'], iters=iter), # Eta improves the Z accuracy slightly
+            open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PH'], iters=iter),
         #    open_mdsdataset(data_dir,   geometry='cartesian',   prefix=['PHL']),
             ])
     # For some reason the iters parameter isn't working as I expect, so I'm using this "if" instead. 
@@ -40,7 +43,27 @@ def open_mitgcm_output_all_vars(data_dir,var='all',iter='all',):
     else:
         print("Illegal variable name")
         return
-    if iter!='all': ds = ds.isel(time=[iter]) 
+    #if iter!='all': ds = ds.isel(time=[iter]) 
+    if fix_timestep!=False: # If we want to fix the timestep...
+        if fix_timestep==True: # In this case, seach for a deltaT and correct the (incorrect) np.timedelta64 
+            try: 
+                with open(data_dir+'/data','r') as f: data = f.readlines()
+                for line in data: 
+                    if 'deltaT' in line:
+                        deltaT = int(re.sub(r'\D', '', line)) # Replaces any character that is not a digit with a string and outputs int
+                try: 
+                    ds['time'] = ds['time']*deltaT
+                except:
+                    print("Couldn't find a deltaT in the data file")
+                    quit()
+            except:
+                print("Couldn't open the data file")
+                quit()
+        elif type(fix_timestep)==int:
+            ds['time'] = ds['time']*fix_timestep
+        else:
+            print("Invalid fix_timestep")
+            quit()
     return ds
 
 def colocate_velocities(ds):
@@ -144,7 +167,9 @@ def calculate_N2_linear_EOS(ds,g=10,a=0.0002,b=0):
 
 if __name__ == "__main__":
     
-    run = 'mrb_028'
+    run = 'mrb_038'
     data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
     ds = open_mitgcm_output_all_vars(data_dir)
-    calculate_N2_TEOS10(ds)
+    print(ds)
+    print(ds.time)
+    #calculate_N2_TEOS10(ds)
