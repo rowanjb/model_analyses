@@ -75,7 +75,7 @@ def plume_plot_engine(ds, run, vertical_plane_variable, horizontal_plane_variabl
 
     # Create a figure with 3D ax
     plt.rcParams["font.family"] = "serif" # Change the base font
-    fig = plt.figure(figsize=(4,4))
+    fig = plt.figure(figsize=(3,3))
     ax = fig.add_subplot(111, projection='3d')
 
     # Plot horizontal surface
@@ -124,6 +124,7 @@ def plume_plot_engine(ds, run, vertical_plane_variable, horizontal_plane_variabl
     # Set labels etc
     ax.set_xlabel('X ($m$)',fontsize=9,labelpad=-2)
     ax.tick_params(axis='x', which='major', pad=1.5, labelsize=9)
+    plt.locator_params(axis = 'x', nbins = 5)
     ax.set_ylabel('Y ($m$)',fontsize=9)
     ax.tick_params(axis='y', which='major', pad=-1, labelsize=9)
     ax.set_zlabel('Depth ($m$)',fontsize=9)
@@ -154,17 +155,19 @@ def plume_plot_engine(ds, run, vertical_plane_variable, horizontal_plane_variabl
     timestep_str = timestep_str.zfill(10)
 
     filepath = './figures/figs_3D/'+run+'_'+timestep_str+'_'+vertical_plane_variable+'_'+horizontal_plane_variable+'_4x4.png'
-    plt.savefig(filepath,dpi=450,bbox_inches="tight")
+    #plt.savefig(filepath,dpi=450,bbox_inches="tight")
+    plt.savefig(filepath,dpi=1200,bbox_inches="tight")
     print(filepath+' saved')
     plt.close()
 
 def run_plume_plot(run,vertical_plane_variable='T',horizontal_plane_variable='zeta',i_time=10):
     
     # Some necessary filepaths
-    data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    #data_dir = '/albedo/home/robrow001/MITgcm/so_plumes/'+run
+    data_dir = '/albedo/work/projects/p_so-clim/GCM_data/RowanMITgcm/'+run
     
     # Opening the data
-    ds = bma.open_mitgcm_output_all_vars(data_dir,i_time) 
+    ds = bma.open_mitgcm_output_all_vars(data_dir).isel(time=[i_time]) # Square brackets preserve dim
 
     # Adding any necessary variables (I'll keep expanding this with new variables later)
     if horizontal_plane_variable=='zeta':
@@ -196,43 +199,5 @@ def run_plume_plot(run,vertical_plane_variable='T',horizontal_plane_variable='ze
 
 if __name__ == "__main__":
    
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 15
+    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_038', 'T', 'T', 480 
     run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 20
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 25
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'S', 'S', 30
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-    '''
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 15
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 20
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 25
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'T', 'T', 30
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-    '''
-    '''
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 0
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 15
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 20
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 25
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-
-    run, vertical_plane_variable, horizontal_plane_variable, i_time = 'mrb_024', 'N2', 'zeta', 30
-    run_plume_plot(run, vertical_plane_variable, horizontal_plane_variable, i_time)
-    '''

@@ -14,6 +14,8 @@ import datetime
 import xgcm
 import os
 import gsw
+import matplotlib.font_manager as fm # For dealing with fonts
+import matplotlib.textpath as textpath # For dealing with fonts
 
 def plot_vertical_plane(da, var, figs_dir, vmin=None, vmax=None):
     """Make a 2D plot of some variable at the center of the domain.
@@ -32,7 +34,8 @@ def plot_vertical_plane(da, var, figs_dir, vmin=None, vmax=None):
     
     # Extract the time
     td = pd.to_timedelta(da['time'].data, unit='ns') # Time in nanoseconds SEEMS WRONG
-    timedelta_str = '+'+str(td.components.hours) + ' hrs '+str(td.components.minutes)+' min' # Title of the figure
+    d, h, m = str(td.components.days).zfill(2), str(td.components.hours).zfill(2), str(td.components.minutes).zfill(2)
+    timedelta_str_nonmono = d+':'+h+':'+m # Title of the figure
     timestep_str = str(int(td.total_seconds())).zfill(10) # Time for using in the figure file name
 
     # Colourbar label dictionary 
@@ -60,18 +63,23 @@ def plot_vertical_plane(da, var, figs_dir, vmin=None, vmax=None):
         os.makedirs(figs_dir)
 
     # Plot
-    plt.rcParams["font.family"] = "serif" # change the base font
+    plt.rcParams['font.family'] = "Serif"
     fig, ax = plt.subplots(figsize=(3.54, 2.5)) # 3.54 is a typical half-page figure width
     if var=='quiver': # i.e., if you have multiple variables (i.e., da is really a dataset)
-        p = xr.plot.pcolormesh(da['speed'], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var]})
+        p = xr.plot.pcolormesh(da['speed'], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var], 'extend': 'neither'})
         n = 3
         da.isel(YC=slice(None,None,n),Z=slice(None,None,n)).plot.quiver(x='YC',y='Z',u='V',v='W',scale=0.33*n, add_guide=False) # old scale was 15
     else:
-        p = xr.plot.pcolormesh(da[var], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var]})
+        p = xr.plot.pcolormesh(da[var], vmin=vmin, vmax=vmax, cmap=cmap[var], cbar_kwargs={'label': cbar_label[var], 'extend': 'neither'})
     cbar = p.colorbar
     cbar.ax.tick_params(labelsize=9)  # Font size for colorbar ticks
     cbar.set_label(cbar_label[var], size=9) 
-    ax.set_title(timedelta_str,fontsize=11)
+
+    # Temporary
+    p.cmap.set_over('white')
+    p.cmap.set_under('white')
+
+    ax.set_title(timedelta_str_nonmono, fontsize=11)
     ax.set_ylabel('Depth ($m$)',fontsize=9)
     ax.set_xlabel('Y ($m$)',fontsize=9)
     ax.tick_params(size=9)
@@ -86,7 +94,7 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
     
     # Creating filepaths and opening the data
     # Reason for the try-except is that there are only two locations where the data might be
-    figs_dir = '/albedo/home/robrow001/model_analyses/figures/figs2D_'+run+'_'+var
+    figs_dir = './figures/figs2D_'+run+'_'+var
     try:
         data_dir = '../MITgcm/so_plumes/'+run
         ds = bma.open_mitgcm_output_all_vars(data_dir,var=var)
@@ -132,7 +140,7 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
 
 if __name__ == "__main__":
     #run_plot_vertical_plane(run='mrb_034', var='quiver', vmin=0, vmax=0.2)
-    #run_plot_vertical_plane(run='mrb_036', var='quiver', vmin=0, vmax=0.2)
-    #run_plot_vertical_plane(run='mrb_036', var='T', vmin=-2, vmax=2)
-    run_plot_vertical_plane(run='mrb_036', var='S', vmin=34.4, vmax=34.9)
-    run_plot_vertical_plane(run='mrb_036', var='rho_theta', vmin=27.7, vmax=27.85,eos='TEOS10')
+    run_plot_vertical_plane(run='mrb_050', var='T', vmin=-2.05, vmax=2.05)
+    run_plot_vertical_plane(run='mrb_050', var='quiver', vmin=0, vmax=0.2)
+    run_plot_vertical_plane(run='mrb_050', var='S', vmin=34.4, vmax=34.9)
+    run_plot_vertical_plane(run='mrb_050', var='rho_theta', vmin=27.7, vmax=27.85,eos='TEOS10')
