@@ -130,17 +130,20 @@ def from_mooring():
         else: y[i] = np.sum(dy_dict[depth][:i]) + n/2
 
     # Opening the mooring data
-    ds = mooring_analyses.open_mooring_ml_data()
+    ds = mooring_analyses.open_mooring_ml_data(time_delta='hour')
     ds = mooring_analyses.correct_mooring_salinities(ds)
-    ds = ds.drop_vars('P').dropna(dim='depth') # Drop P and then you can get rid of depths with no salt observations w/ dropna
-    ds = ds.sel(day='2021-09-14T00:00:00.000000000') # Select a day at the start of September, right before the plume
+    ds = ds.isel(depth=slice(0,5,2)) # Take only -50, -135, and -220 depths (rest have nans)
+    time1, time2 = '2021-09-12T21:00:00.000000000', '2021-09-13T03:00:00.000000000'
+    ds = ds.sel(day=slice(time1,time2)).mean(dim='day',skipna=True) # Select a day at the start of September, right before the plume
 
-    # Opening the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
+    # Opening the WOA data; 
+    # Previously used seasons, e.g., ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
+    # Switching to monthly data, which embarrassingly I forgot existed
     with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
-    das = xr.open_dataset(dirpath + '/WOA_seasonally_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
-    s_woa = das.isel(time=2).interp(depth=y) # time=2 refers to "summer"
-    dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
-    t_woa = dat.isel(time=2).interp(depth=y) # time=2 refers to "summer"
+    das = xr.open_dataset(dirpath + '/WOA_monthly_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
+    s_woa = das.isel(time=8).interp(depth=y) # time=2 refers to "summer"
+    dat = xr.open_dataset(dirpath + '/WOA_monthly_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
+    t_woa = dat.isel(time=8).interp(depth=y) # time=2 refers to "summer"
     p = gsw.p_from_z((-1)*y,lat=-69.0005) # Calculating pressure from depth, then getting absolute salinity, and potential temperature 
     SA = gsw.SA_from_SP(s_woa,p,lat=-69.0005,lon=-27.0048)           # ...(you should want theta/pt---this is what the model demands!)
     pt = gsw.pt0_from_t(SA,t_woa,p)
@@ -163,7 +166,7 @@ def from_mooring():
     
     # Finding depth threshold indices, i.e., where in the model depths do mooring data apply
     id50  = np.where(y == np.min(y[y>50]) )
-    id135 = np.where(y == np.min(y[y>135]) )
+    id135 = np.where(y == np.min(y[y>125]) )
     id220 = np.where(y == np.min(y[y>220]) )
 
     # Interpolating/filling values
@@ -174,16 +177,16 @@ def from_mooring():
             mean_diff_t = dst[0] - t_woa[id50]
             s[n] = s_woa[n] + mean_diff_s
             t[n] = t_woa[n] + mean_diff_t
-        elif d<135:
+        elif d<125:
             del_s = dss[1] - dss[0]
             del_t = dst[1] - dst[0]
-            weight = (d-50)/(135-50)
+            weight = (d-50)/(125-50)
             s[n] = dss[0] + del_s*weight
             t[n] = dst[0] + del_t*weight
         elif d<220:
             del_s = dss[2] - dss[1]
             del_t = dst[2] - dst[1]
-            weight = (d-135)/(220-135)
+            weight = (d-125)/(220-125)
             s[n] = dss[1] + del_s*weight
             t[n] = dst[1] + del_t*weight
         else:
@@ -193,9 +196,9 @@ def from_mooring():
             t[n] = t_woa[n] + mean_diff_t
     
     pseudo = np.tile(t,(numAx2,numAx1,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooringSept14.'+size+'.'+depth+'.bin')
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooringSept13.'+size+'.'+depth+'.bin')
     pseudo = np.tile(s,(numAx2,numAx1,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooringSept14.'+size+'.'+depth+'.bin')
+    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.mooringSept13.'+size+'.'+depth+'.bin')
 
 def Q_surf():
     Q = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
@@ -205,25 +208,29 @@ def Q_surf():
     xmitgcm.utils.write_to_binary(Q.flatten(order='F'), '../MITgcm/so_plumes/binaries/Qnet_1000W.40mCirc.150x150.bin')
 
 def Q_surf_3D():
-    Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_1000W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
+    Q2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
     Q1 = np.zeros(np.shape(Q2)) # Starting conditions (hend "1")
-    Q = np.concatenate([np.tile(Q1, (4,1,1)), 
-                        np.tile(Q2, (48,1,1)), 
-                        np.tile(Q1, (20,1,1)),
+    Q = np.concatenate([np.tile(Q1, (1,1,1)), 
+                        np.tile(Q2*2, (70,1,1)), 
+                        np.tile(Q1, (1,1,1)),
                         ])
     print(np.shape(Q))
-    xmitgcm.utils.write_to_binary(Q.flatten(order='C'), '../MITgcm/so_plumes/binaries/Qnet_1000W.40mCirc.72x150x150.bin' )
+    xmitgcm.utils.write_to_binary(Q.flatten(order='C'), '../MITgcm/so_plumes/binaries/Qnet_5000W.40mCirc.72x150x150.bin' )
 
 def salt_flux():
     S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
     S[S != 0] = 0.00001 # Try to find a reasonable value for this 
     xmitgcm.utils.write_to_binary(S.flatten(order='F'), '../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100.bin')
 
-def salt_flux_3D():
-    S2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
+def salt_flux_3D(): 
+    S2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
     S1 = np.zeros(np.shape(S2)) # Starting conditions (hend "1")
-    S = np.stack([S1, S2, S1],axis=2)
-    xmitgcm.utils.write_to_binary(S.flatten(order='F'), '../MITgcm/so_plumes/binaries/Snet_00001s-1.40mCirc.100x100x3.bin')
+    S2[S2.nonzero()] = -0.03#000010441682478739057 #g/kg
+    S = np.concatenate([np.tile(S1, (1,1,1)), 
+                        np.tile(S2, (30,1,1)), 
+                        np.tile(S1, (41,1,1)),
+                        ])
+    xmitgcm.utils.write_to_binary(S.flatten(order='C'), '../MITgcm/so_plumes/binaries/Snet_030.40mCirc.72x150x150v2.bin')
 
 def Eta():
     #Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Eta.120mn.bin', shape=(100,100), dtype=np.dtype('>f4') )
@@ -312,7 +319,8 @@ def read_binaries_tx150x150(binary,length):
     for i in range(length):
         cs = axs[i].pcolormesh(Y, X, P[i,:,:])
         cbar = fig.colorbar(cs)
-    plt.savefig('binary_plots/'+binary[:-4]+'.png')
+    plt.tight_layout()
+    plt.savefig('binary_plots/'+binary[:-4]+'.png',bbox_inches="tight")
 
 #def temporary_read_ver_bins():
 #    fp = '/albedo/home/robrow001/MITgcm/verification/tutorial_global_oce_biogeo/input/shi_qnet.bin'
@@ -338,15 +346,16 @@ if __name__ == "__main__":
     #U()
     #V()
     #constant_S_or_T()
-    Q_surf_3D()
+    #Q_surf_3D()
+    #salt_flux_3D()
     #read_binaries_150x150('Qnet_1000W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
     #read_binaries_50x150x150('V.rand001init.50x150x150.bin')
     #read_binaries_50x150x150('U.rand001init.50x150x150.bin')
-    #read_binaries_50x150x150('SA.mooringSept14.50x150x150.500m.bin')
-    #read_binaries_50x150x150('theta.mooringSept14.50x150x150.500m.bin')
+    #read_binaries_50x150x150('SA.mooringSept13.50x150x150.500m.bin')
+    #read_binaries_50x150x150('theta.mooringSept13.50x150x150.500m.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
     #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
-    read_binaries_tx150x150('Qnet_1000W.40mCirc.72x150x150.bin',72)
+    read_binaries_tx150x150('Qnet_5000W.40mCirc.72x150x150.bin',72)
     #temporary_read_ver_bins()
