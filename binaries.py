@@ -212,10 +212,10 @@ def Q_surf_3D():
     Q1 = np.zeros(np.shape(Q2)) # Starting conditions (hend "1")
     Q = np.concatenate([np.tile(Q1, (1,1,1)), 
                         np.tile(Q2*2, (70,1,1)), 
-                        np.tile(Q1, (1,1,1)),
+                        np.tile(Q1, (25,1,1)),
                         ])
     print(np.shape(Q))
-    xmitgcm.utils.write_to_binary(Q.flatten(order='C'), '../MITgcm/so_plumes/binaries/Qnet_5000W.40mCirc.72x150x150.bin' )
+    xmitgcm.utils.write_to_binary(Q.flatten(order='C'), '../MITgcm/so_plumes/binaries/Qnet_5000W.40mCirc.96x150x150.bin' )
 
 def salt_flux():
     S = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_150W.40mCirc.100x100.bin', shape=(100,100), dtype=np.dtype('>f4') ) 
@@ -228,9 +228,9 @@ def salt_flux_3D():
     S2[S2.nonzero()] = -0.03#000010441682478739057 #g/kg
     S = np.concatenate([np.tile(S1, (1,1,1)), 
                         np.tile(S2, (30,1,1)), 
-                        np.tile(S1, (41,1,1)),
+                        np.tile(S1, (65,1,1)),
                         ])
-    xmitgcm.utils.write_to_binary(S.flatten(order='C'), '../MITgcm/so_plumes/binaries/Snet_030.40mCirc.72x150x150v2.bin')
+    xmitgcm.utils.write_to_binary(S.flatten(order='C'), '../MITgcm/so_plumes/binaries/Snet_030.40mCirc.96x150x150.bin')
 
 def Eta():
     #Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Eta.120mn.bin', shape=(100,100), dtype=np.dtype('>f4') )
@@ -346,8 +346,8 @@ if __name__ == "__main__":
     #U()
     #V()
     #constant_S_or_T()
-    #Q_surf_3D()
-    #salt_flux_3D()
+    Q_surf_3D()
+    salt_flux_3D()
     #read_binaries_150x150('Qnet_1000W.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
@@ -357,5 +357,6 @@ if __name__ == "__main__":
     #read_binaries_50x150x150('theta.mooringSept13.50x150x150.500m.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
     #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
-    read_binaries_tx150x150('Qnet_5000W.40mCirc.72x150x150.bin',72)
+    read_binaries_tx150x150('Qnet_5000W.40mCirc.96x150x150.bin',96)
+    read_binaries_tx150x150('Snet_030.40mCirc.96x150x150.bin',96)
     #temporary_read_ver_bins()

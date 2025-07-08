@@ -68,8 +68,8 @@ if __name__ == "__main__":
     shape = (50,150,150)
     side_cells = 10
     side_max_M = 1
-    bottom_cells = 15 
+    bottom_cells = 5 
     bottom_max_M = 1
-    bin_name = 'relax_mask_linear_10x10x10x10x15.50x150x150.bin'
+    bin_name = 'relax_mask_linear_10x10x10x10x5.50x150x150.bin'
     scaling='linear'
     relax_mask(example_bin, shape, side_cells, side_max_M, bottom_cells, bottom_max_M, bin_name, scaling)
