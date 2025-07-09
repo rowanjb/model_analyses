@@ -232,6 +232,15 @@ def salt_flux_3D():
                         ])
     xmitgcm.utils.write_to_binary(S.flatten(order='C'), '../MITgcm/so_plumes/binaries/Snet_030.40mCirc.96x150x150.bin')
 
+def wind_stress():
+    # Creates a 2D array of wind stress values for model forcing. See 3.8.6.1 "Momentum Forcing" in the manual.
+    # Based on ~15 m/s wind speed (I think at 10 m...) and the equation tau = rho_air C_D U**2 = 1.394 0.0015 15**2
+    # See: https://en.wikipedia.org/wiki/Wind_stress ; https://www.engineeringtoolbox.com/air-density-specific-weight-d_600.html 
+    tau = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
+    stress = 1.394*0.0015*(15**2)
+    tau = np.where(tau>0, stress, 0)
+    xmitgcm.utils.write_to_binary(tau.flatten(order='F'), '../MITgcm/so_plumes/binaries/tau_047.40mCirc.150x150.bin')
+
 def Eta():
     #Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Eta.120mn.bin', shape=(100,100), dtype=np.dtype('>f4') )
     Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_WOA2.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') )
@@ -342,13 +351,14 @@ if __name__ == "__main__":
     #from_woa()
     #from_mooring()
     #Q_surf()
+    wind_stress()
     #Eta()
     #U()
     #V()
     #constant_S_or_T()
-    Q_surf_3D()
-    salt_flux_3D()
-    #read_binaries_150x150('Qnet_1000W.40mCirc.150x150.bin')
+    #Q_surf_3D()
+    #salt_flux_3D()
+    read_binaries_150x150('tau_047.40mCirc.150x150.bin')
     #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
     #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
     #read_binaries_50x150x150('V.rand001init.50x150x150.bin')
@@ -357,6 +367,6 @@ if __name__ == "__main__":
     #read_binaries_50x150x150('theta.mooringSept13.50x150x150.500m.bin')
     #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
     #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
-    read_binaries_tx150x150('Qnet_5000W.40mCirc.96x150x150.bin',96)
-    read_binaries_tx150x150('Snet_030.40mCirc.96x150x150.bin',96)
+    #read_binaries_tx150x150('Qnet_5000W.40mCirc.96x150x150.bin',96)
+    #read_binaries_tx150x150('Snet_030.40mCirc.96x150x150.bin',96)
     #temporary_read_ver_bins()
