@@ -237,20 +237,20 @@ def wind_stress():
     # Based on ~15 m/s wind speed (I think at 10 m...) and the equation tau = rho_air C_D U**2 = 1.394 0.0015 15**2
     # See: https://en.wikipedia.org/wiki/Wind_stress ; https://www.engineeringtoolbox.com/air-density-specific-weight-d_600.html 
     tau = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
-    stress = 1.394*0.0015*(15**2)
+    stress = 1.394*0.0015*(10**2)
     tau = np.where(tau>0, stress, 0)
-    xmitgcm.utils.write_to_binary(tau.flatten(order='F'), '../MITgcm/so_plumes/binaries/tau_047.40mCirc.150x150.bin')
+    xmitgcm.utils.write_to_binary(tau.flatten(order='F'), '../MITgcm/so_plumes/binaries/tau_021.40mCirc.150x150.bin')
 
 
 def wind_stress_3D():
     # Creates a 3D array of wind stress values for model forcing based on the 2D arrays created using wind_stress()
-    tau2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/tau_047.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
+    tau2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/tau_021.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
     tau1 = np.zeros(np.shape(tau2))
     tau = np.concatenate([np.tile(tau2, (1,1,1)), # Copied from salt_flux_3D
                           np.tile(tau2, (30,1,1)), # Going to start with invariant wind, hence no tau1
                           np.tile(tau2, (65,1,1)),
                           ])
-    xmitgcm.utils.write_to_binary(tau.flatten(order='C'), '../MITgcm/so_plumes/binaries/tau_047.40mCirc.96x150x150.bin') # Note the order!!!
+    xmitgcm.utils.write_to_binary(tau.flatten(order='C'), '../MITgcm/so_plumes/binaries/tau_021.40mCirc.96x150x150.bin') # Note the order!!!
 
 def Eta():
     #Eta = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Eta.120mn.bin', shape=(100,100), dtype=np.dtype('>f4') )
@@ -362,7 +362,7 @@ if __name__ == "__main__":
     #from_woa()
     #from_mooring()
     #Q_surf()
-    #wind_stress()
+    wind_stress()
     #Eta()
     #U()
     #V()
