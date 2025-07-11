@@ -28,10 +28,7 @@ def generate_video(run, var):
 
 if __name__ == "__main__":
     #generate_video('mrb_033', 'rho_theta')
-    generate_video('mrb_053', 'T')
-    generate_video('mrb_054', 'T')
-    generate_video('mrb_055', 'T')
-    generate_video('mrb_056', 'T')
-    #generate_video('mrb_052', 'S')
-    #generate_video('mrb_052', 'quiver')
-    #generate_video('mrb_052', 'rho_theta')
+    generate_video('mrb_057', 'T')
+    generate_video('mrb_057', 'S')
+    generate_video('mrb_057', 'quiver')
+    generate_video('mrb_057', 'rho_theta')

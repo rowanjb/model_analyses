@@ -140,10 +140,7 @@ def run_plot_vertical_plane(run, var, vmin=None, vmax=None, eos=None):
 
 if __name__ == "__main__":
     #run_plot_vertical_plane(run='mrb_034', var='quiver', vmin=0, vmax=0.2)
-    run_plot_vertical_plane(run='mrb_053', var='T', vmin=-2.05, vmax=2.05)
-    run_plot_vertical_plane(run='mrb_054', var='T', vmin=-2.05, vmax=2.05)
-    run_plot_vertical_plane(run='mrb_055', var='T', vmin=-2.05, vmax=2.05)
-    run_plot_vertical_plane(run='mrb_056', var='T', vmin=-2.05, vmax=2.05)
-    #run_plot_vertical_plane(run='mrb_052', var='quiver', vmin=0, vmax=0.2)
-    #run_plot_vertical_plane(run='mrb_052', var='S', vmin=34.4, vmax=34.9)
-    #run_plot_vertical_plane(run='mrb_052', var='rho_theta', vmin=27.7, vmax=27.85,eos='TEOS10')
+    run_plot_vertical_plane(run='mrb_057', var='T', vmin=-2.05, vmax=2.05)
+    run_plot_vertical_plane(run='mrb_057', var='quiver', vmin=0, vmax=0.2)
+    run_plot_vertical_plane(run='mrb_057', var='S', vmin=34.4, vmax=34.9)
+    run_plot_vertical_plane(run='mrb_057', var='rho_theta', vmin=27.7, vmax=27.85,eos='TEOS10')
