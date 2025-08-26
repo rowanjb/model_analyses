@@ -13,174 +13,104 @@ import cell_thickness_calculator as ctc
 
 import sys
 sys.path.insert(1, '../obs_analyses/')
+import mooring_analyses as ma
 
 
-def from_woa():
-    """Script for making binaries out of WOA climatologies."""
+def from_mooring(dx: int, dy: int, Nx: int, Ny: int, Nz: int, fp: str, dz,
+                 bottom: int = 500):
+    """
+    Script for making and saving binaries out of mooring data.
+    Mooring data is interpolated onto the model grid between (e.g.,)
+    50 and 220 m. Outside these bounds, WOA climatology is used (it's
+    "spliced in", if ya know what I mean).
+
+    Parameters:
+        dx, dy (int): grid spacing (m) in x and y
+        Nx, Ny, Nz (int): number of total grid points in x, y, and z
+        fp (str): filepath of the binary
+        dz: if int then dz is the grid spacing (m) in z, if 'variable'
+            then the vertical dimension is varied exponentially from
+            1 m at the surface to a depth set by `bottom'
+        bottom (optional): if dz=='variable' then bottom is the bottom of
+            the lowest cell (in m), default is 500 m
+    """
 
     # Parameters
-    season = 'autumn'
-    season_dict = {'winter': 0, 'spring': 1, 'summer': 2, 'autumn': 3}
-    depth = '1000m'
-    num_levels, numAx1, numAx2 = 50, 100, 100
-    size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
-    pot_temp = True # Whether you want pot or in-situ temp
-    abs_salt = True # Whether you want abs or practical salt
-    salt_dev = True # Whether you want the salinity deviation from the mean to be reduced (reduces stratifiation)
-    salt_dev_perc = '90' # Percentage of salt deviation from mean (0=full deviation, 100=no deviation)
-
-    #== Note: Depths used in the model / cell thicknesses are parabolas scaled to the domain depth. ==#
-    # Note this should be changed in the future to the method used in from_mooring
-    print("Check how you get the dy; it's possibly wrong!")
-    # 50 cells in 1000 m: 
-    dy1000m = np.array([0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8,7.6,8.4,9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,16.4,17.2,18.0,
-                        18.8,19.6,20.4,21.2,22.0,22.8,23.6, 24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,32.4,33.2,34.0,
-                        34.8,35.6,36.4,37.2,38.0,38.8,39.6])
-    dy_dict = {'1000m':dy1000m}
-
-    # Depths used in the model
-    y = np.zeros(len(dy_dict[depth]))
-    for i,n in enumerate(dy_dict[depth]): # Getting sell depths
-        if i==0: y[i] = n/2
-        else: y[i] = np.sum(dy_dict[depth][:i]) + n/2
-
-    # Opening the WOA data; seasons are ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
-    with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
-    das = xr.open_dataset(dirpath + '/WOA_seasonally_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
-    s = das.isel(time=season_dict[season]).interp(depth=y)
-    dat = xr.open_dataset(dirpath + '/WOA_seasonally_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
-    t = dat.isel(time=season_dict[season]).interp(depth=y)
-
-    # Calculating pressure from depth, absolute salinity, and potential temperature 
-    # (you should want theta/pt---this is what the model demands!)
-    p = gsw.p_from_z((-1)*y,lat=-69.0005)
-    SA = gsw.SA_from_SP(s,p,lat=-69.0005,lon=-27.0048)
-    pt = gsw.pt0_from_t(SA,t,p)
-
-    # Determining which salt and temp to use
-    if pot_temp: # If potential temp, then...
-        t = pt # Let t now be potential temperature
-        t_name = 'theta' # Let the var name in the file be theta
-    else: # etc
-        t_name = 'T'
-    if abs_salt: 
-        s = SA
-        s_name = 'SA'
+    if dz == "variable":
+        num_levels, numAx1, numAx2 = Nz, Nx, Ny
+        size = str(num_levels)+'z_x_'+str(numAx1)+'x_x_'+str(numAx2)+'y'
+        x1, x2 = 1, Nz  # Indices of top and bottom cells
+        fx1 = 1  # Depth of bottom of top cell (i.e., its thickness)
+        min_slope = 1  # i.e., with >1, then cell #2 is a bit thicker than #1
+        A, B, C, _, _ = ctc.find_parameters(x1, x2, fx1, bottom, min_slope)
+        dys = ctc.return_cell_thicknesses(x1, x2, bottom, A, B, C)
+        y = np.zeros(len(dys))
+        for i, n in enumerate(dys):  # Getting cell centres
+            if i == 0:  # If top cell, simply divide its thickness by two
+                y[i] = n/2
+            else:  # Otherwise, sum all cells to current cell and add a half
+                y[i] = np.sum(dys[:i]) + n/2
+    elif type(dz) is int:
+        dys = [dz for n in range(Nz)]
+        y = [i*(n)+i/2 for n, i in enumerate(dys)]
     else:
-        s_name = 'S'
-
-    # Reducing the salinity's deviation
-    if salt_dev:
-        weighted_mean_s = np.average(s,weights=dy_dict[depth]) # Mean of the salinity profile
-        delta_s = s - weighted_mean_s # Calculate the deviations
-        s = s - delta_s*(1-float('0.'+salt_dev_perc)) # Remove some fraction of the deviation
-        s_name = s_name + 'x0' + salt_dev_perc
-
-    # Name dicts 
-    pseudo = np.tile(t,(100,100,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.WOA2015.'+size+'.'+season+'.bin')
-    pseudo = np.tile(s,(numAx2,numAx1,1))
-    xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+s_name+'.WOA2015.'+size+'.'+season+'.bin')
-
-def from_mooring():
-    """Script for making binaries out of mooring data.
-    Mooring data is interpolated onto the model grid between (e.g.,) 50 and 220 m.
-    Outside these bounds, WOA climatology is used (it's "spliced in", if ya know what I mean). 
-    """    
-    # "Deprecated" docstring
-    #Note the WOA summer (so S.H. winter) climatologies show that surface salinity equals 50 m salinity.
-    #Similar for temp, but with warming in the uppwer 5ish meters.
-    #I will set the upper 50 m temp and salinity to the value at the 50 m sensor.
-    #I will for now do the same for under 220 m.
-    #BUT in the future consider splicing in the WOA clims above and/or below the sensor data."""
-
-    # Parameters
-    depth = '500m'
-    num_levels, numAx1, numAx2 = 50, 150, 150
-    size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
-    pot_temp = True # Whether you want pot or in-situ temp
-    abs_salt = True # Whether you want abs or practical salt
-
-    #== Note: Depths used in the model / cell thicknesses can vary. Check your specific criteria and modify "scaling". ==#
-    # Deprecating this section and replacing with ctc
-    #if scaling==0: # If scaling is 0, then using these parabolic thicknesses
-    #    dy1000m = np.array([0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8,7.6,8.4,9.2,10.0,10.8,11.6,12.4,13.2,14.0,14.8,15.6,16.4,17.2,18.0,
-    #                        18.8,19.6,20.4,21.2,22.0,22.8,23.6, 24.4,25.2,26.0,26.8,27.6,28.4,29.2,30.0,30.8,31.6,32.4,33.2,34.0,
-    #                        34.8,35.6,36.4,37.2,38.0,38.8,39.6])
-    #    dy500m = dy1000m/2 # 50 cells in 500 m
-    #elif scaling==1: # If scaling is 1, then use these thicknesses (which I /think/ come from "cell_thickness_calculator...")
-    #...    
-    # Implementing usage of ctc after mrb_036; before this, you'll need to look at each run's data file for dz lists
-    x1, x2 = 1, 50 # Indices of top and bottom cells
-    fx1 = 1 # Depth of bottom of top cell
-    min_slope = 1 # Minimum slope (should probably > x1)
-    A, B, C, _, _ = ctc.find_parameters(x1, x2, fx1, 500, min_slope) # In the future, consider rewriting this so that it doesn't
-    dy500m = ctc.return_cell_thicknesses(x1, x2, 500, A, B, C)             # repeat for 500 and 1000 m
-    A, B, C, _, _ = ctc.find_parameters(x1, x2, fx1, 1000, min_slope)
-    dy1000m = ctc.return_cell_thicknesses(x1, x2, 1000, A, B, C)
-    dy_dict = {'1000m':dy1000m, '500m':dy500m}
-
-    # Depths used in the model (calculated to the centre of the cells)
-    y = np.zeros(len(dy_dict[depth]))
-    for i,n in enumerate(dy_dict[depth]): # Getting sell depths
-        if i==0: y[i] = n/2
-        else: y[i] = np.sum(dy_dict[depth][:i]) + n/2
+        print("Illegal dz")
+        quit()
 
     # Opening the mooring data
-    ds = mooring_analyses.open_mooring_ml_data(time_delta='hour')
-    ds = mooring_analyses.correct_mooring_salinities(ds)
-    ds = ds.isel(depth=slice(0,5,2)) # Take only -50, -135, and -220 depths (rest have nans)
-    time1, time2 = '2021-09-12T21:00:00.000000000', '2021-09-13T03:00:00.000000000'
-    ds = ds.sel(day=slice(time1,time2)).mean(dim='day',skipna=True) # Select a day at the start of September, right before the plume
+    ds = ma.open_mooring_data()
+    ds.correct_mooring_salinities()
+    ds.append_gsw_vars()
+    ds = ds.sel(depth=[-50, -125, -220])
+    time1 = '2021-09-12T21:00:00.000000000'
+    time2 = '2021-09-13T03:00:00.000000000'
+    ds = ds.sel(time=slice(time1, time2)).mean(dim='time', skipna=True)
+    # Select a day at the start of September, right before the plume
 
-    # Opening the WOA data; 
-    # Previously used seasons, e.g., ['winter', 'spring', 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
-    # Switching to monthly data, which embarrassingly I forgot existed
-    with open('../filepaths/woa_filepath') as f: dirpath = f.readlines()[0][:-1] # the [0] accesses the first line, and the [:-1] removes the newline tag
-    das = xr.open_dataset(dirpath + '/WOA_monthly_'+'s'+'_'+str(2015)+'.nc',decode_times=False)['s_an']
-    s_woa = das.isel(time=8).interp(depth=y) # time=2 refers to "summer"
-    dat = xr.open_dataset(dirpath + '/WOA_monthly_'+'t'+'_'+str(2015)+'.nc',decode_times=False)['t_an']
-    t_woa = dat.isel(time=8).interp(depth=y) # time=2 refers to "summer"
-    p = gsw.p_from_z((-1)*y,lat=-69.0005) # Calculating pressure from depth, then getting absolute salinity, and potential temperature 
-    SA = gsw.SA_from_SP(s_woa,p,lat=-69.0005,lon=-27.0048)           # ...(you should want theta/pt---this is what the model demands!)
-    pt = gsw.pt0_from_t(SA,t_woa,p)
+    # Opening the WOA data
+    # Previously used seasons, e.g., ['winter', 'spring',
+    # 'summer', 'autumn'] (i.e., NORTHERN HEMISPHERE SEASONS!)
+    # Now switching to monthly data, which embarrassingly I forgot existed
+    with open('../filepaths/woa_filepath') as f:
+        dirpath = f.readlines()[0][:-1]
+    das = xr.open_dataset(
+        dirpath + '/WOA_monthly_' + 's' + '_' + str(2015) + '.nc',
+        decode_times=False)['s_an']
+    s_woa = das.isel(time=8).interp(depth=y)  # time is the month from jan=0
+    dat = xr.open_dataset(
+        dirpath + '/WOA_monthly_' + 't' + '_' + str(2015) + '.nc',
+        decode_times=False)['t_an']
+    t_woa = dat.isel(time=8).interp(depth=y)  # time is the month from jan=0
+    # Calculating pressure from depth, then getting SA, and pt
+    p = gsw.p_from_z([(-1)*i for i in y], lat=-69.0005)
+    s_woa = gsw.SA_from_SP(s_woa, p, lat=-69.0005, lon=-27.0048)
+    t_woa = gsw.pt0_from_t(s_woa, t_woa, p)
+    dst = gsw.pt0_from_t(ds['SA'], ds['T'], ds['p_from_z']).values
+    dss = ds['SA'].values
 
-    # Determining which salt and temp to use
-    if pot_temp: # If potential temp is what we're looking for, then...
-        dst = gsw.pt0_from_t(ds['SA'],ds['T'],ds['p_from_z']).values # Let t (mooring) be potential temperature
-        t_woa = pt # Let t (WOA) now be potential temperature 
-        t_name = 'theta' # Let the var name in the file be theta
-    else: # i.e., if we /don't/ want potential temp, we will use in-situ
-        dst = ds['T'].values 
-        t_name = 'T'
-    if abs_salt: # Similarly, if it is absolute salinity that we're looking for, then...
-        dss = ds['SA'].values
-        s_woa = SA # And let s (WOA) be absolute salinity
-        s_name = 'SA'
-    else: # i.e., if we /don't/ want absolute salinity, then we likely want PSU
-        dss = ds['S'].values
-        s_name = 'S'
-    
-    # Finding depth threshold indices, i.e., where in the model depths do mooring data apply
-    id50  = np.where(y == np.min(y[y>50]) )
-    id135 = np.where(y == np.min(y[y>125]) )
-    id220 = np.where(y == np.min(y[y>220]) )
+    # Finding depth threshold indices, i.e., where in the model depths
+    # do mooring data apply
+    y = np.array(y)
+    id50 = np.where(y == np.min(y[y > 50]))
+    id125 = np.where(y == np.min(y[y > 125]))
+    id220 = np.where(y == np.min(y[y > 220]))
 
     # Interpolating/filling values
-    s, t = np.empty(len(y)), np.empty(len(y)) # These are our final s and t vectors
-    for n,d in enumerate(y):
-        if d<50:
+    # These are our final s and t vectors
+    s, t = np.empty(len(y)), np.empty(len(y))
+    for n, d in enumerate(y):
+        if d < 50:
             mean_diff_s = dss[0] - s_woa[id50]
             mean_diff_t = dst[0] - t_woa[id50]
             s[n] = s_woa[n] + mean_diff_s
             t[n] = t_woa[n] + mean_diff_t
-        elif d<125:
+        elif d < 125:
             del_s = dss[1] - dss[0]
             del_t = dst[1] - dst[0]
             weight = (d-50)/(125-50)
             s[n] = dss[0] + del_s*weight
             t[n] = dst[0] + del_t*weight
-        elif d<220:
+        elif d < 220:
             del_s = dss[2] - dss[1]
             del_t = dst[2] - dst[1]
             weight = (d-125)/(220-125)
@@ -191,7 +121,14 @@ def from_mooring():
             mean_diff_t = dst[2] - t_woa[id220]
             s[n] = s_woa[n] + mean_diff_s
             t[n] = t_woa[n] + mean_diff_t
-    
+
+    fig, ax = plt.subplots()
+    ax.plot(gsw.sigma0(s, gsw.CT_from_pt(s, t)), y)
+    ax.invert_yaxis()
+    plt.savefig('test.png')
+
+    quit()
+
     pseudo = np.tile(t,(numAx2,numAx1,1))
     xmitgcm.utils.write_to_binary(pseudo.flatten(order='F'), '../MITgcm/so_plumes/binaries/'+t_name+'.mooringSept13.'+size+'.'+depth+'.bin')
     pseudo = np.tile(s,(numAx2,numAx1,1))
@@ -338,27 +275,6 @@ def read_binaries_tx150x150(binary, length):
     plt.tight_layout()
     plt.savefig('binary_plots/'+binary[:-4]+'.png',bbox_inches="tight")
 
+
 if __name__ == "__main__":
-    #from_woa()
-    #from_mooring()
-    #Q_surf()
-    wind_stress()
-    #Eta()
-    #U()
-    #V()
-    #constant_S_or_T()
-    #Q_surf_3D()
-    #salt_flux_3D()
-    wind_stress_3D()
-    #read_binaries_150x150('tau_047.40mCirc.150x150.bin')
-    #read_binaries_100x100('Qnet_2500W.40mCirc.100x100.bin')
-    #read_binaries_50x100x100('theta.mooring.50x100x100.bin')
-    #read_binaries_50x150x150('V.rand001init.50x150x150.bin')
-    #read_binaries_50x150x150('U.rand001init.50x150x150.bin')
-    #read_binaries_50x150x150('SA.mooringSept13.50x150x150.500m.bin')
-    #read_binaries_50x150x150('theta.mooringSept13.50x150x150.500m.bin')
-    #read_binaries_100x100xt('Qnet_150W.40mCirc.100x100x24.bin',24)
-    #read_binaries_150x150xt('Qnet_2500W.40mCirc_v2.150x150x24.bin',24)
-    #read_binaries_tx150x150('Qnet_5000W.40mCirc.96x150x150.bin',96)
-    read_binaries_tx150x150('tau_047.40mCirc.96x150x150.bin',96)
-    #temporary_read_ver_bins()
+    from_mooring(dx=3, dy=3, Nx=75, Ny=1, Nz=75, fp='test', dz=3)
