@@ -1,29 +1,26 @@
-# Based partly on: https://xmitgcm.readthedocs.io/en/stable/demo_writing_binary_file.html 
-# These are some basic functions that I use to make and investigate MITgcm binaries
+# Based partly on:
+# https://xmitgcm.readthedocs.io/en/stable/demo_writing_binary_file.html
+# These are some basic functions that I use to make and investigate
+# MITgcm binaries
 
 import numpy as np
-import pandas as pd
 import xmitgcm
 import matplotlib.pylab as plt
-import xmitgcm.file_utils
 import xmitgcm.utils
-from MITgcmutils import density
 import xarray as xr
 import gsw
-import basic_model_anayses as bma 
 import cell_thickness_calculator as ctc
 
 import sys
 sys.path.insert(1, '../obs_analyses/')
-import mooring_analyses
-import woa_analyses
+
 
 def from_woa():
     """Script for making binaries out of WOA climatologies."""
 
     # Parameters
     season = 'autumn'
-    season_dict = {'winter':0,'spring':1,'summer':2,'autumn':3}
+    season_dict = {'winter': 0, 'spring': 1, 'summer': 2, 'autumn': 3}
     depth = '1000m'
     num_levels, numAx1, numAx2 = 50, 100, 100
     size = str(num_levels) +'x' + str(numAx1) + 'x' + str(numAx2)
@@ -241,7 +238,6 @@ def wind_stress():
     tau = np.where(tau>0, stress, 0)
     xmitgcm.utils.write_to_binary(tau.flatten(order='F'), '../MITgcm/so_plumes/binaries/tau_021.40mCirc.150x150.bin')
 
-
 def wind_stress_3D():
     # Creates a 3D array of wind stress values for model forcing based on the 2D arrays created using wind_stress()
     tau2 = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/tau_021.40mCirc.150x150.bin', shape=(150,150), dtype=np.dtype('>f4') ) 
@@ -319,7 +315,7 @@ def read_binaries_50x100x100(binary):
     cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
-def read_binaries_100x100xt(binary,length):
+def read_binaries_100x100xt(binary, length):
     """Reads binaries with a time dimension."""
     P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(length,100,100), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
     X = np.linspace(0, 99, 100)#(0, 41, 42)
@@ -330,7 +326,7 @@ def read_binaries_100x100xt(binary,length):
         cbar = fig.colorbar(cs)
     plt.savefig('binary_plots/'+binary[:-4]+'.png')
 
-def read_binaries_tx150x150(binary,length):
+def read_binaries_tx150x150(binary, length):
     """Reads binaries with a time dimension."""
     P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/'+binary, shape=(length,150,150), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
     X = np.linspace(0, 149, 150)#(0, 41, 42)
@@ -341,22 +337,6 @@ def read_binaries_tx150x150(binary,length):
         cbar = fig.colorbar(cs)
     plt.tight_layout()
     plt.savefig('binary_plots/'+binary[:-4]+'.png',bbox_inches="tight")
-
-#def temporary_read_ver_bins():
-#    fp = '/albedo/home/robrow001/MITgcm/verification/tutorial_global_oce_biogeo/input/shi_qnet.bin'
-#    P = xmitgcm.utils.read_raw_data(fp, shape=(12, 64, 128), dtype=np.dtype('>f4') )
-#    X = np.linspace(0, 127, 128)#(0, 41, 42)
-#    Y = np.linspace(0, 63, 64)#(0, 19, 20)
-#    plt.pcolormesh(X, Y, P[4,:,:])
-#    plt.colorbar()
-#    plt.savefig('temp.png')
-#    plt.clf()
-#    P = xmitgcm.utils.read_raw_data('../MITgcm/so_plumes/binaries/Qnet_2500W.40mCirc_v2.150x150x24.bin', shape=(24,150,150), dtype=np.dtype('>f4') ) #shape=(14*3,10*2,12), dtype=np.dtype('>f4'),order='F' ) #shape=(100,100,3), dtype=np.dtype('>f4') )
-#    X = np.linspace(0, 149, 150)#(0, 41, 42)
-#    Y = np.linspace(0, 149, 150)#(0, 19, 20)
-#    plt.pcolormesh(X, Y, P[10,:,:])
-#    plt.colorbar()
-#    plt.savefig('temp2.png')
 
 if __name__ == "__main__":
     #from_woa()
